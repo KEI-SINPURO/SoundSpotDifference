@@ -1,0 +1,2205 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>サウンド間違い探し｜ユニバーサルデザイン 3Dモデル</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Three.js r128 -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;700;800;900&family=JetBrains+Mono:wght@600;700;800&family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet" />
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Noto Sans JP"', '"Inter"', 'sans-serif'],
+            display: ['"Inter"', '"Noto Sans JP"', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'monospace'],
+          }
+        }
+      }
+    };
+  </script>
+
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      background-color: #060913;
+      color: #F1F5F9;
+      overflow: hidden;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    .glass-panel {
+      background: rgba(12, 19, 34, 0.88);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid rgba(148, 163, 184, 0.18);
+    }
+
+    .custom-scroll::-webkit-scrollbar {
+      width: 5px;
+    }
+    .custom-scroll::-webkit-scrollbar-track {
+      background: rgba(15, 23, 42, 0.6);
+    }
+    .custom-scroll::-webkit-scrollbar-thumb {
+      background: rgba(100, 116, 139, 0.45);
+      border-radius: 9999px;
+    }
+
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      background: transparent;
+      cursor: pointer;
+    }
+    input[type="range"]::-webkit-slider-runnable-track {
+      height: 6px;
+      border-radius: 9999px;
+      background: #1E293B;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #38BDF8;
+      margin-top: -6px;
+      box-shadow: 0 0 10px rgba(56, 189, 248, 0.75);
+    }
+
+    @keyframes pulseRing {
+      0% { transform: scale(0.95); opacity: 0.9; }
+      70% { transform: scale(1.28); opacity: 0; }
+      100% { transform: scale(1.28); opacity: 0; }
+    }
+    .voice-pulse {
+      animation: pulseRing 1.5s infinite;
+    }
+  </style>
+</head>
+<body class="font-sans antialiased flex flex-col">
+
+  <!-- =====================================================================
+       トップバー：タイトル・3D表示モード切替・音声ON/OFF
+  ====================================================================== -->
+  <header class="shrink-0 z-30 glass-panel border-b border-slate-800/90 px-3 sm:px-5 py-2.5">
+    <div class="max-w-[1720px] mx-auto flex flex-wrap items-center justify-between gap-2">
+      <!-- タイトル -->
+      <div class="flex items-center gap-2.5">
+        <div class="w-8 h-8 rounded-xl bg-gradient-to-br from-sky-500/30 via-rose-500/25 to-amber-500/30 border border-slate-700 flex items-center justify-center shrink-0">
+          <svg class="w-5 h-5 text-sky-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+            <rect x="2" y="5" width="7" height="14" rx="1.5" />
+            <rect x="15" y="5" width="7" height="14" rx="1.5" />
+            <ellipse cx="12" cy="12" rx="1.8" ry="4.2" fill="#F43F5E" stroke="none" />
+          </svg>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="text-sm sm:text-base font-black tracking-tight text-white leading-tight">
+              サウンド間違い探し<span class="text-sky-400 font-bold ml-1.5 text-xs sm:text-sm">構造＆デモ 3Dモデル</span>
+            </h1>
+            <span class="hidden sm:inline-block px-2 py-0.5 rounded-md bg-sky-500/15 border border-sky-400/40 font-mono text-[10px] font-bold text-sky-300">
+              UNIVERSAL SOUND TOY
+            </span>
+          </div>
+          <p class="hidden md:block text-[11px] text-slate-400">
+            左右3×3格子ボタン（9マス別音色・1ゲーム全10音）・中央縦並び3段階難易度ボタン・左右同時押し判定
+          </p>
+        </div>
+      </div>
+
+      <!-- 表示モード切替タブ（① 外観・通常プレイ / ② 仕組み・内部構造モデル） -->
+      <div class="flex flex-wrap items-center gap-2">
+        <div class="inline-flex p-1 rounded-xl bg-slate-950/90 border border-slate-800" role="tablist">
+          <button id="btnModeDemo" type="button" class="px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-extrabold transition-all bg-sky-500 text-slate-950 shadow">
+            ① 外観・通常プレイ
+          </button>
+          <button id="btnModeMech" type="button" class="px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-extrabold transition-all text-slate-300 hover:text-white">
+            ② 仕組み・内部構造モデル
+          </button>
+        </div>
+
+        <button id="btnAudioToggle" type="button" class="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-xs font-bold text-slate-200 flex items-center gap-1.5 transition-colors">
+          <span id="audioDot" class="w-2 h-2 rounded-full bg-emerald-400"></span>
+          <span id="audioLabel">音声・効果音 ON</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- =====================================================================
+       メイン3Dステージ ＋ 右側操作・構造インスペクタ
+  ====================================================================== -->
+  <main class="relative flex-1 min-h-0 flex flex-col lg:flex-row overflow-hidden">
+
+    <!-- 左・中央：フル3Dキャンバスエリア -->
+    <section id="canvasStage" class="relative flex-1 min-h-[340px] h-full overflow-hidden">
+      <canvas id="threeCanvas" class="block w-full h-full cursor-grab active:cursor-grabbing"></canvas>
+
+      <!-- 左上：コンパクト視点切替 ＆ 折りたたみ式操作ガイド -->
+      <div class="absolute top-3 left-3 z-20 flex flex-col gap-1.5 pointer-events-none max-w-[310px]">
+        <div class="flex flex-wrap items-center gap-1.5 pointer-events-auto">
+          <button id="btnToggleGuide" type="button" class="px-2.5 py-1.5 rounded-xl glass-panel hover:bg-slate-800 border border-sky-400/40 text-[11px] font-extrabold text-sky-300 shadow">
+            ？ 操作ガイド
+          </button>
+          <button type="button" data-view="play" class="view-btn px-2 py-1.5 rounded-xl glass-panel hover:bg-slate-800 text-[11px] font-bold text-slate-200">正面</button>
+          <button type="button" data-view="top" class="view-btn px-2 py-1.5 rounded-xl glass-panel hover:bg-slate-800 text-[11px] font-bold text-slate-200">真上</button>
+          <button type="button" data-view="side" class="view-btn px-2 py-1.5 rounded-xl glass-panel hover:bg-slate-800 text-[11px] font-bold text-slate-200">側面</button>
+          <button type="button" data-view="angle" class="view-btn px-2 py-1.5 rounded-xl glass-panel hover:bg-slate-800 text-[11px] font-bold text-slate-200">斜視</button>
+        </div>
+
+        <div id="guidePopover" class="hidden glass-panel rounded-2xl px-3 py-2.5 text-[11px] text-slate-200 space-y-1 pointer-events-auto shadow-xl border border-sky-400/35">
+          <div class="font-extrabold text-sky-300 flex items-center justify-between">
+            <span>操作方法</span>
+            <button id="btnCloseGuide" type="button" class="text-slate-400 hover:text-white text-xs font-bold px-1">✕</button>
+          </div>
+          <ul class="text-slate-300 space-y-0.5 leading-snug">
+            <li>・<strong>中央の縦3ボタン</strong>：「レベル◯スタート！」で開始</li>
+            <li>・<strong>左右の丸ボタン</strong>：1つ押すとそのマスの音を再生</li>
+            <li>・<strong>左右の対応ボタン同時押し</strong>：回答判定（連続押し/Shift+クリック/両手キー）</li>
+            <li>・<strong>背景ドラッグ</strong>：回転 ／ ホイール：拡大縮小</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- 右上（キャンバス内）：指先なぞり触覚センサーテスト トグル -->
+      <div class="absolute top-3 right-3 z-20 flex flex-col items-end gap-2">
+        <button id="btnTactileProbe" type="button" class="px-3 py-2 rounded-2xl glass-panel hover:bg-slate-800/90 border border-amber-400/40 text-xs font-extrabold text-amber-200 flex items-center gap-2 shadow-lg transition-all">
+          <span id="probeLed" class="w-2.5 h-2.5 rounded-full bg-slate-500"></span>
+          <span id="probeBtnLabel">指先なぞり触覚テスト：OFF</span>
+        </button>
+        <div id="tactileReadoutBox" class="hidden glass-panel rounded-xl px-3 py-1.5 text-[11px] font-bold text-amber-200 border border-amber-400/40 shadow max-w-[295px] text-right">
+          表面をなぞると「3×3格子枠・ホーム突起・中央縦3段階レベルボタン」を検知します
+        </div>
+      </div>
+
+      <!-- 下部中央：おもちゃ本体（中央コアスピーカー）からの音声発話字幕バー -->
+      <div class="absolute bottom-3 left-3 right-3 z-20 pointer-events-none flex flex-col items-center gap-2">
+        <div id="toySpeechBar" class="glass-panel rounded-2xl px-4 py-2.5 border border-sky-400/45 shadow-2xl max-w-2xl w-full flex items-center gap-3">
+          <div class="relative w-8 h-8 rounded-full bg-rose-500/20 border border-rose-400/60 flex items-center justify-center shrink-0">
+            <span id="speechWaveRing" class="hidden absolute inset-0 rounded-full border-2 border-rose-400 voice-pulse"></span>
+            <svg class="w-4 h-4 text-rose-300" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M11 5L6 9H2v6h4l5 4V5zM15.54 8.46a5 5 0 010 7.07M19.07 4.93a10 10 0 010 14.14" />
+            </svg>
+          </div>
+          <div class="min-w-0 flex-1">
+            <div class="text-[10px] font-mono font-bold text-rose-300 tracking-wider">CORE SPEAKER // 中央コアスピーカーからの音声ガイド</div>
+            <div id="toySpeechText" class="text-xs sm:text-sm font-extrabold text-white truncate">
+              「真ん中に縦に並んだレベル1・2・3のボタンを押すとスタート！9マス全部違う音から1ヶ所だけの違いを見つけてね」
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 右サイドパネル：ゲーム進行・難易度・収録サウンド・内部構造インスペクタ -->
+    <aside class="w-full lg:w-[415px] shrink-0 glass-panel border-t lg:border-t-0 lg:border-l border-slate-800/90 p-3.5 overflow-y-auto custom-scroll flex flex-col gap-3 z-20 max-h-[48vh] lg:max-h-none">
+
+      <!-- 1. 難易度選択（3段階スタート）・収録サウンド・スコアパネル -->
+      <div class="rounded-2xl bg-slate-950/85 border border-slate-800 p-3.5 space-y-3">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-extrabold text-white flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-rose-500"></span>
+            <span>難易度スタート（中央縦3ボタン連動）</span>
+          </span>
+          <span id="gameStatusBadge" class="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-sky-500/20 text-sky-300 border border-sky-500/40">
+            プレイ中（1ヶ所相違あり）
+          </span>
+        </div>
+
+        <!-- 3つの難易度選択（本体中央に縦並びの凸1本・2本・3本ボタンと連動） -->
+        <div>
+          <div class="flex items-center justify-between mb-1.5">
+            <span class="text-[10px] font-bold text-slate-400">押すと「レベル◯スタート！」で新問題を開始</span>
+            <span id="diffDescLabel" class="text-[10px] font-bold text-emerald-300">音色の違いがはっきり</span>
+          </div>
+          <div class="grid grid-cols-3 gap-1.5">
+            <button type="button" data-diff="1" class="diff-btn py-2.5 px-2 rounded-xl bg-emerald-500/20 border border-emerald-400 text-emerald-200 font-extrabold text-xs transition-all text-center">
+              <div>レベル1</div>
+              <div class="text-[9px] opacity-85 font-mono">上段｜凸1本</div>
+            </button>
+            <button type="button" data-diff="2" class="diff-btn py-2.5 px-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300 font-extrabold text-xs transition-all text-center">
+              <div>レベル2</div>
+              <div class="text-[9px] opacity-85 font-mono">中段｜凸2本</div>
+            </button>
+            <button type="button" data-diff="3" class="diff-btn py-2.5 px-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300 font-extrabold text-xs transition-all text-center">
+              <div>レベル3</div>
+              <div class="text-[9px] opacity-85 font-mono">下段｜凸3本</div>
+            </button>
+          </div>
+        </div>
+
+        <!-- 9マス基準音の順番試聴ボタン -->
+        <button id="btnPreviewPair" type="button" class="w-full py-2 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-extrabold text-xs transition-colors flex items-center justify-center gap-1.5" title="1番〜9番の基準音を順番に聴く">
+          <svg class="w-4 h-4 text-sky-400 shrink-0" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+          </svg>
+          <span>9マス基準音を順番に試聴（1番〜9番）</span>
+        </button>
+
+        <!-- 収録サウンドテーマ選択（たくさんの音を収録：全60音） -->
+        <div>
+          <div class="flex items-center justify-between mb-1">
+            <span class="text-[10px] font-bold text-slate-400">収録サウンドバンク（6ジャンル・全60音収録）</span>
+            <span id="currentSoundName" class="text-[10px] font-extrabold text-sky-300">全60音ミックス（10音使用）</span>
+          </div>
+          <div class="grid grid-cols-3 gap-1.5">
+            <button type="button" data-bank="all" class="bank-btn py-1.5 px-2 rounded-lg bg-sky-500/20 border border-sky-400 text-sky-200 text-[11px] font-extrabold">全60音ミックス</button>
+            <button type="button" data-bank="instrument" class="bank-btn py-1.5 px-2 rounded-lg bg-slate-900 border border-slate-700 text-slate-300 text-[11px] font-bold">🎹 楽器（10音）</button>
+            <button type="button" data-bank="animal" class="bank-btn py-1.5 px-2 rounded-lg bg-slate-900 border border-slate-700 text-slate-300 text-[11px] font-bold">🐾 動物（10音）</button>
+            <button type="button" data-bank="nature" class="bank-btn py-1.5 px-2 rounded-lg bg-slate-900 border border-slate-700 text-slate-300 text-[11px] font-bold">🌿 自然（10音）</button>
+            <button type="button" data-bank="daily" class="bank-btn py-1.5 px-2 rounded-lg bg-slate-900 border border-slate-700 text-slate-300 text-[11px] font-bold">🔔 生活（10音）</button>
+            <button type="button" data-bank="sfx" class="bank-btn py-1.5 px-2 rounded-lg bg-slate-900 border border-slate-700 text-slate-300 text-[11px] font-bold">🚀 効果音（10音）</button>
+          </div>
+        </div>
+
+        <!-- 経過タイム＆連続正解数表示 -->
+        <div class="grid grid-cols-2 gap-2">
+          <div class="rounded-xl bg-slate-900/90 border border-slate-800 p-2">
+            <div class="text-[10px] font-bold text-slate-400">経過タイム</div>
+            <div id="timerDisplay" class="font-mono text-lg font-black text-white">00.0<span class="text-xs font-bold text-slate-400 ml-0.5">秒</span></div>
+          </div>
+          <div class="rounded-xl bg-slate-900/90 border border-amber-500/30 p-2">
+            <div class="text-[10px] font-bold text-amber-300">正解数 / 連続記録</div>
+            <div id="scoreDisplay" class="font-mono text-lg font-black text-amber-300">0<span class="text-xs font-bold text-amber-400/70 mx-1">問</span><span id="streakDisplay" class="text-xs text-emerald-300">(連続 0)</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. 左右 3×3 ボタン操作 ＆ 同時押し回答パネル -->
+      <div class="rounded-2xl bg-slate-950/85 border border-slate-800 p-3.5 space-y-2.5">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-extrabold text-white">左右 3×3 ボタン ＆ 同時押し回答</span>
+          <span id="lastPairLabel" class="text-[10px] font-mono font-bold text-sky-300">待機中</span>
+        </div>
+
+        <p class="text-[11px] text-slate-400 leading-snug">
+          3Dモデル上の丸ボタンを1回押すとその音が鳴ります。<strong>左右の対応するボタンを同時に押す（または連続クリック／Shift+クリック）</strong>と回答になります。
+        </p>
+
+        <!-- ミニ 3×3 操作盤（左3×3 ＋ 中央同時押しボタン ＋ 右3×3） -->
+        <div class="grid grid-cols-7 gap-1.5 items-center pt-1">
+          <!-- 左 3×3 -->
+          <div class="col-span-3">
+            <div class="text-[10px] font-extrabold text-sky-300 text-center mb-1">左 3×3（左音）</div>
+            <div id="miniGridLeft" class="grid grid-cols-3 gap-1"></div>
+          </div>
+
+          <!-- 中央：選択中ペアの同時押し実行ボタン -->
+          <div class="col-span-1 flex flex-col items-center justify-center gap-1">
+            <button id="btnSimulCommit" type="button" class="w-full py-3.5 px-1 rounded-xl bg-amber-500/20 hover:bg-amber-500/35 border border-amber-400/60 text-amber-200 font-black text-[10px] leading-tight text-center transition-all shadow" title="選択中の番号の左右ボタンを同時押しして回答">
+              左右<br/>同時<br/>回答
+            </button>
+          </div>
+
+          <!-- 右 3×3 -->
+          <div class="col-span-3">
+            <div class="text-[10px] font-extrabold text-amber-300 text-center mb-1">右 3×3（右音）</div>
+            <div id="miniGridRight" class="grid grid-cols-3 gap-1"></div>
+          </div>
+        </div>
+
+        <div class="flex items-center justify-between pt-1 border-t border-slate-800/80 text-[10px] text-slate-400">
+          <span>両手キー同時押し：左[QWE/ASD/ZXC] ＋ 右[UIO/JKL/M,.]</span>
+          <button id="btnRevealHint" type="button" class="text-sky-400 hover:text-sky-300 font-bold underline">答えを見る</button>
+        </div>
+      </div>
+
+      <!-- 3. 仕組み解説・内部構造＆分解ビュー -->
+      <div class="rounded-2xl bg-slate-950/85 border border-slate-800 p-3.5 space-y-2.5">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-extrabold text-white flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-sky-400"></span>
+            <span>内部機構＆分解展開ビュー（CAD構造）</span>
+          </span>
+          <span id="explodePctLabel" class="font-mono text-xs font-extrabold text-sky-300">分解: 0%</span>
+        </div>
+
+        <!-- 分解展開スライダー -->
+        <div class="space-y-1">
+          <input id="sliderExplode" type="range" min="0" max="1" step="0.01" value="0" class="w-full" aria-label="パーツ分解展開スライダー" />
+          <div class="flex justify-between text-[10px] text-slate-400">
+            <span>合体状態 (0%)</span>
+            <span>基板・ボタン展開 (50%)</span>
+            <span>完全分解 (100%)</span>
+          </div>
+        </div>
+
+        <!-- 構造パーツハイライト切替 -->
+        <div class="grid grid-cols-1 gap-1.5 pt-1 border-t border-slate-800/80 text-[11px]">
+          <button type="button" data-part="tactile" class="part-info-btn w-full px-2.5 py-2 rounded-xl bg-sky-500/10 hover:bg-sky-500/20 border border-sky-500/35 text-left transition-colors flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-sky-400 shrink-0 shadow shadow-sky-400"></span>
+            <span class="font-extrabold text-sky-200">① 格子ガイド枠 ＆ 触覚3×3ボタン</span>
+          </button>
+
+          <button type="button" data-part="core" class="part-info-btn w-full px-2.5 py-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/35 text-left transition-colors flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-rose-500 shrink-0 shadow shadow-rose-500"></span>
+            <span class="font-extrabold text-rose-200">② 中央縦3段階レベルボタン ＆ コア音響ユニット</span>
+          </button>
+
+          <button type="button" data-part="matrix" class="part-info-btn w-full px-2.5 py-2 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/35 text-left transition-colors flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-amber-400 shrink-0 shadow shadow-amber-400"></span>
+            <span class="font-extrabold text-amber-200">③ 左右18chスイッチ基板 ＆ 信号ケーブル</span>
+          </button>
+        </div>
+      </div>
+
+    </aside>
+  </main>
+
+  <!-- =====================================================================
+       JavaScript：Web Audio 多彩サウンドエンジン ＋ SpeechSynthesis ＋ Three.js 3Dモデル
+  ====================================================================== -->
+  <script>
+    /**
+     * 多彩な収録サウンド ＆ 日本語音声ガイドエンジン
+     * 6ジャンル・全60種類の音色をWeb Audio APIでリアルタイム合成（ステレオ定位対応）
+     */
+    class SoundDifferenceAudioEngine {
+      constructor() {
+        this.ctx = null;
+        this.enabled = true;
+        this.soundLibrary = this.buildSoundLibrary();
+        this.jaVoice = null;
+        this.ttsAudioCache = {};
+        this._speakTimer = null;
+
+        this.initJapaneseVoice();
+        this.preloadLevelStartVoices();
+      }
+
+      initJapaneseVoice() {
+        if (!('speechSynthesis' in window)) return;
+        const pickVoice = () => {
+          try {
+            const voices = window.speechSynthesis.getVoices() || [];
+            this.jaVoice =
+              voices.find((v) => v.lang === 'ja-JP' && /Google|Kyoko|O-Ren|Nanami|Haruka/i.test(v.name)) ||
+              voices.find((v) => v.lang && v.lang.toLowerCase().startsWith('ja')) ||
+              null;
+          } catch (e) {}
+        };
+        pickVoice();
+        if (typeof window.speechSynthesis.onvoiceschanged !== 'undefined') {
+          window.speechSynthesis.onvoiceschanged = pickVoice;
+        }
+      }
+
+      pcmToWavBlob(pcm16, sampleRate) {
+        const buffer = new ArrayBuffer(44 + pcm16.length * 2);
+        const view = new DataView(buffer);
+        const writeStr = (offset, str) => {
+          for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i));
+        };
+        writeStr(0, 'RIFF');
+        view.setUint32(4, 36 + pcm16.length * 2, true);
+        writeStr(8, 'WAVE');
+        writeStr(12, 'fmt ');
+        view.setUint32(16, 16, true);
+        view.setUint16(20, 1, true);
+        view.setUint16(22, 1, true);
+        view.setUint32(24, sampleRate, true);
+        view.setUint32(28, sampleRate * 2, true);
+        view.setUint16(32, 2, true);
+        view.setUint16(34, 16, true);
+        writeStr(36, 'data');
+        view.setUint32(40, pcm16.length * 2, true);
+        for (let i = 0; i < pcm16.length; i++) {
+          view.setInt16(44 + i * 2, pcm16[i], true);
+        }
+        return new Blob([buffer], { type: 'audio/wav' });
+      }
+
+      async preloadLevelStartVoices() {
+        const phrases = ['レベル1スタート！', 'レベル2スタート！', 'レベル3スタート！'];
+        const apiKey = '';
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${apiKey}`;
+
+        for (const phrase of phrases) {
+          try {
+            const payload = {
+              contents: [{ parts: [{ text: `元気で明るくはっきりと発音してください：${phrase}` }] }],
+              generationConfig: {
+                responseModalities: ['AUDIO'],
+                speechConfig: {
+                  voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Puck' } }
+                }
+              },
+              model: 'gemini-2.5-flash-preview-tts'
+            };
+            const res = await fetch(apiUrl, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload)
+            });
+            if (!res.ok) continue;
+            const data = await res.json();
+            const part = data?.candidates?.[0]?.content?.parts?.[0];
+            const audioData = part?.inlineData?.data;
+            const mimeType = part?.inlineData?.mimeType || '';
+            if (audioData && mimeType.startsWith('audio/')) {
+              const rateMatch = mimeType.match(/rate=(\d+)/);
+              const sampleRate = rateMatch ? parseInt(rateMatch[1], 10) : 24000;
+              const bin = atob(audioData);
+              const bytes = new Uint8Array(bin.length);
+              for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+              const pcm16 = new Int16Array(bytes.buffer);
+              const wavBlob = this.pcmToWavBlob(pcm16, sampleRate);
+              this.ttsAudioCache[phrase] = URL.createObjectURL(wavBlob);
+            }
+          } catch (e) {
+            // TTS取得不可環境ではブラウザ標準音声合成に自動フォールバック
+          }
+        }
+      }
+
+      ensureCtx() {
+        if (!this.enabled) return null;
+        if (!this.ctx) {
+          const AudioCtx = window.AudioContext || window.webkitAudioContext;
+          if (AudioCtx) this.ctx = new AudioCtx();
+        }
+        if (this.ctx && this.ctx.state === 'suspended') {
+          this.ctx.resume().catch(() => {});
+        }
+        return this.ctx;
+      }
+
+      toggle() {
+        this.enabled = !this.enabled;
+        if (!this.enabled && 'speechSynthesis' in window) {
+          try { window.speechSynthesis.cancel(); } catch (e) {}
+        }
+        return this.enabled;
+      }
+
+      speak(text, rate = 1.04, pitch = 1.12) {
+        const speechEl = document.getElementById('toySpeechText');
+        const waveEl = document.getElementById('speechWaveRing');
+        if (speechEl) speechEl.textContent = `「${text}」`;
+        if (waveEl) {
+          waveEl.classList.remove('hidden');
+          clearTimeout(this._waveTimer);
+          this._waveTimer = setTimeout(() => waveEl.classList.add('hidden'), 3200);
+        }
+
+        if (!this.enabled) return;
+
+        // キャッシュ済みのTTS音声（「レベル◯スタート！」等）があれば優先再生
+        if (this.ttsAudioCache[text]) {
+          try {
+            if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+            const audioEl = new Audio(this.ttsAudioCache[text]);
+            audioEl.play().catch(() => {});
+            return;
+          } catch (e) {}
+        }
+
+        // ブラウザ標準の日本語音声合成（cancel直後の無音バグを防ぐため45ms遅延で確実に発話）
+        if ('speechSynthesis' in window && typeof SpeechSynthesisUtterance !== 'undefined') {
+          try {
+            clearTimeout(this._speakTimer);
+            window.speechSynthesis.cancel();
+            this._speakTimer = setTimeout(() => {
+              try {
+                const utter = new SpeechSynthesisUtterance(text);
+                utter.lang = 'ja-JP';
+                if (this.jaVoice) utter.voice = this.jaVoice;
+                utter.rate = rate;
+                utter.pitch = pitch;
+                utter.volume = 1.0;
+                utter.onerror = () => {};
+                window.speechSynthesis.speak(utter);
+              } catch (err) {}
+            }, 45);
+          } catch (e) {}
+        }
+      }
+
+      /**
+       * 全60種類の収録サウンド定義（6ジャンル × 10音色）
+       * どのジャンルを選んでも1ゲームに必要な10音すべて異なる音色で構成可能
+       */
+      buildSoundLibrary() {
+        return [
+          // 1. 楽器サウンド (10種)
+          { id: 'piano_c', bank: 'instrument', name: 'グランドピアノ', freq: 523.25, wave: 'triangle', decay: 0.48, harm: 2.0 },
+          { id: 'marimba', bank: 'instrument', name: '木琴（マリンバ）', freq: 659.25, wave: 'sine', decay: 0.24, harm: 4.0 },
+          { id: 'flute', bank: 'instrument', name: 'フルートの音色', freq: 783.99, wave: 'sine', decay: 0.54, vibrato: true },
+          { id: 'trumpet', bank: 'instrument', name: 'トランペット', freq: 440.00, wave: 'sawtooth', decay: 0.42, filter: 1450 },
+          { id: 'church_bell', bank: 'instrument', name: 'きらめくベル', freq: 1046.5, wave: 'sine', decay: 0.65, harm: 2.75 },
+          { id: 'harp', bank: 'instrument', name: 'ハープのアルペジオ', freq: 587.33, wave: 'triangle', decay: 0.46, pattern: 'arpeggio' },
+          { id: 'violin', bank: 'instrument', name: 'バイオリンの弦音', freq: 659.25, wave: 'sawtooth', decay: 0.55, filter: 1850, pattern: 'bow' },
+          { id: 'bass_guitar', bank: 'instrument', name: 'ウッドベース低音', freq: 146.83, wave: 'triangle', decay: 0.45, harm: 2.0 },
+          { id: 'music_box', bank: 'instrument', name: 'オルゴールの響き', freq: 1318.5, wave: 'sine', decay: 0.52, harm: 3.0 },
+          { id: 'snare_tap', bank: 'instrument', name: '小太鼓・リズム打音', freq: 260, wave: 'square', decay: 0.22, pattern: 'double' },
+
+          // 2. 動物・生き物 (10種)
+          { id: 'bird_chirp', bank: 'animal', name: '小鳥のさえずり', freq: 1850, wave: 'sine', decay: 0.32, pattern: 'chirp' },
+          { id: 'frog_croak', bank: 'animal', name: 'カエルの鳴き声', freq: 230, wave: 'sawtooth', decay: 0.36, pattern: 'croak' },
+          { id: 'cat_meow', bank: 'animal', name: '子ネコの鳴き声', freq: 620, wave: 'triangle', decay: 0.45, pattern: 'meow' },
+          { id: 'owl_hoot', bank: 'animal', name: 'フクロウのホーホー', freq: 392, wave: 'sine', decay: 0.50, pattern: 'hoot' },
+          { id: 'cricket', bank: 'animal', name: '秋のコオロギ', freq: 2550, wave: 'sine', decay: 0.34, pattern: 'trill' },
+          { id: 'duck_quack', bank: 'animal', name: 'アヒルのガーガー', freq: 340, wave: 'square', decay: 0.35, pattern: 'croak' },
+          { id: 'uguisu', bank: 'animal', name: 'ウグイスのホーホケキョ', freq: 1480, wave: 'sine', decay: 0.48, pattern: 'uguisu' },
+          { id: 'puppy_bark', bank: 'animal', name: '子犬のワンワン', freq: 460, wave: 'sawtooth', decay: 0.28, filter: 1200, pattern: 'bark' },
+          { id: 'elephant', bank: 'animal', name: 'ゾウのパオーン', freq: 310, wave: 'sawtooth', decay: 0.55, filter: 980, pattern: 'trumpet_call' },
+          { id: 'honey_bee', bank: 'animal', name: 'ミツバチのブーン羽音', freq: 210, wave: 'sawtooth', decay: 0.44, filter: 650, pattern: 'ufo' },
+
+          // 3. 自然・環境音 (10種)
+          { id: 'water_drop', bank: 'nature', name: 'しずくの波紋', freq: 920, wave: 'sine', decay: 0.28, pattern: 'drop' },
+          { id: 'wind_breeze', bank: 'nature', name: 'そよ風の音', freq: 480, wave: 'sine', decay: 0.55, pattern: 'wind' },
+          { id: 'stream_brook', bank: 'nature', name: '小川のせせらぎ', freq: 1150, wave: 'triangle', decay: 0.40, pattern: 'bubble' },
+          { id: 'thunder_rumble', bank: 'nature', name: '遠い雷鳴ゴロゴロ', freq: 115, wave: 'sawtooth', decay: 0.58, filter: 340 },
+          { id: 'rain_patter', bank: 'nature', name: '雨粒のリズム', freq: 1480, wave: 'sine', decay: 0.30, pattern: 'trill' },
+          { id: 'ocean_wave', bank: 'nature', name: '穏やかな波の音', freq: 290, wave: 'sine', decay: 0.62, pattern: 'wind' },
+          { id: 'campfire', bank: 'nature', name: '焚き火のパチパチ音', freq: 1750, wave: 'square', decay: 0.28, pattern: 'robot' },
+          { id: 'ice_crystal', bank: 'nature', name: '氷の結晶キラキラ', freq: 2150, wave: 'sine', decay: 0.44, pattern: 'arpeggio' },
+          { id: 'mountain_echo', bank: 'nature', name: '山びこエコー', freq: 720, wave: 'sine', decay: 0.52, pattern: 'echo' },
+          { id: 'wind_chime', bank: 'nature', name: '夏の風鈴チリン', freq: 1980, wave: 'sine', decay: 0.62, harm: 2.4 },
+
+          // 4. 生活・チャイム (10種)
+          { id: 'door_chime', bank: 'daily', name: '玄関チャイム（ピンポン）', freq: 659.25, wave: 'sine', decay: 0.52, pattern: 'dingdong' },
+          { id: 'alarm_bell', bank: 'daily', name: '目覚ましベル', freq: 1320, wave: 'square', decay: 0.34, pattern: 'trill' },
+          { id: 'crossing', bank: 'daily', name: '踏切のカンカン音', freq: 740, wave: 'triangle', decay: 0.38, pattern: 'double' },
+          { id: 'door_knock', bank: 'daily', name: '木のドアノック', freq: 185, wave: 'triangle', decay: 0.22, pattern: 'double' },
+          { id: 'phone_ring', bank: 'daily', name: '電話の呼び出し音', freq: 880, wave: 'sine', decay: 0.44, pattern: 'trill' },
+          { id: 'microwave_ding', bank: 'daily', name: 'お知らせチン！音', freq: 1567.98, wave: 'sine', decay: 0.58, harm: 3.0 },
+          { id: 'ambulance', bank: 'daily', name: '救急車のピーポー音', freq: 960, wave: 'sine', decay: 0.52, pattern: 'siren' },
+          { id: 'wall_clock', bank: 'daily', name: '柱時計のボーン', freq: 220, wave: 'sine', decay: 0.68, harm: 2.5 },
+          { id: 'bicycle_bell', bank: 'daily', name: '自転車のチリンチリン', freq: 1680, wave: 'triangle', decay: 0.36, pattern: 'double' },
+          { id: 'station_melody', bank: 'daily', name: '駅の出発メロディ', freq: 587.33, wave: 'sine', decay: 0.48, pattern: 'arpeggio' },
+
+          // 5. ドレミ・和音 (10種)
+          { id: 'scale_do', bank: 'scale', name: 'ドレミの「ド」', freq: 523.25, wave: 'triangle', decay: 0.42 },
+          { id: 'scale_re', bank: 'scale', name: 'ドレミの「レ」', freq: 587.33, wave: 'triangle', decay: 0.42 },
+          { id: 'scale_mi', bank: 'scale', name: 'ドレミの「ミ」', freq: 659.25, wave: 'triangle', decay: 0.42 },
+          { id: 'scale_fa', bank: 'scale', name: 'ドレミの「ファ」', freq: 698.46, wave: 'triangle', decay: 0.42 },
+          { id: 'scale_so', bank: 'scale', name: 'ドレミの「ソ」', freq: 783.99, wave: 'triangle', decay: 0.42 },
+          { id: 'scale_la', bank: 'scale', name: 'ドレミの「ラ」', freq: 880.00, wave: 'triangle', decay: 0.42 },
+          { id: 'scale_ti', bank: 'scale', name: 'ドレミの「シ」', freq: 987.77, wave: 'triangle', decay: 0.42 },
+          { id: 'scale_do_hi', bank: 'scale', name: '高い「ド（上）」', freq: 1046.5, wave: 'triangle', decay: 0.44 },
+          { id: 'chord_major', bank: 'scale', name: '明るい和音（ドミソ）', freq: 523.25, wave: 'sine', decay: 0.52, pattern: 'chord_maj' },
+          { id: 'chord_minor', bank: 'scale', name: 'やさしい和音（レファラ）', freq: 587.33, wave: 'sine', decay: 0.52, pattern: 'chord_min' },
+
+          // 6. 効果音 (10種)
+          { id: 'sfx_ufo', bank: 'sfx', name: 'UFOワープ音', freq: 640, wave: 'sine', decay: 0.48, pattern: 'ufo' },
+          { id: 'sfx_coin', bank: 'sfx', name: 'コイン獲得音', freq: 987.77, wave: 'square', decay: 0.36, pattern: 'coin' },
+          { id: 'sfx_robot', bank: 'sfx', name: 'ロボット電子音', freq: 420, wave: 'sawtooth', decay: 0.36, pattern: 'robot' },
+          { id: 'sfx_jump', bank: 'sfx', name: 'ぴょん！ジャンプ音', freq: 330, wave: 'square', decay: 0.32, pattern: 'jump' },
+          { id: 'sfx_magic', bank: 'sfx', name: 'キラキラ魔法音', freq: 1174.66, wave: 'sine', decay: 0.50, pattern: 'arpeggio' },
+          { id: 'sfx_horn', bank: 'sfx', name: 'ラッパのファンファーレ', freq: 523.25, wave: 'sawtooth', decay: 0.44, pattern: 'double' },
+          { id: 'sfx_laser', bank: 'sfx', name: 'レーザービーム音', freq: 1650, wave: 'sawtooth', decay: 0.32, pattern: 'laser' },
+          { id: 'sfx_powerup', bank: 'sfx', name: 'パワーアップ上昇音', freq: 392, wave: 'triangle', decay: 0.48, pattern: 'powerup' },
+          { id: 'sfx_spring', bank: 'sfx', name: 'バネのビヨヨ〜ン音', freq: 280, wave: 'sine', decay: 0.46, pattern: 'spring' },
+          { id: 'sfx_tick', bank: 'sfx', name: 'カウントダウン時計音', freq: 1120, wave: 'square', decay: 0.28, pattern: 'double' }
+        ];
+      }
+
+      /**
+       * 指定した音色オブジェクトを再生（pan: -0.65=左, 0=中央, +0.65=右, pitchMult: 周波数倍率）
+       */
+      playSampleSound(soundObj, pan = 0, pitchMult = 1.0, extraDouble = false) {
+        const ctx = this.ensureCtx();
+        if (!ctx || !soundObj) return;
+        const now = ctx.currentTime;
+        const baseFreq = soundObj.freq * pitchMult;
+
+        // ステレオパンナー（対応ブラウザのみ）
+        let outputNode = ctx.destination;
+        if (typeof ctx.createStereoPanner === 'function') {
+          const panner = ctx.createStereoPanner();
+          panner.pan.setValueAtTime(Math.max(-1, Math.min(1, pan)), now);
+          panner.connect(ctx.destination);
+          outputNode = panner;
+        }
+
+        const triggerTone = (startTime, freq, dur, waveType, modPattern) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = waveType || soundObj.wave || 'triangle';
+          osc.frequency.setValueAtTime(freq, startTime);
+
+          // 特徴的な音色モジュレーション
+          if (modPattern === 'chirp') {
+            osc.frequency.exponentialRampToValueAtTime(freq * 1.45, startTime + dur * 0.45);
+            osc.frequency.exponentialRampToValueAtTime(freq * 0.9, startTime + dur);
+          } else if (modPattern === 'croak') {
+            osc.frequency.linearRampToValueAtTime(freq * 1.35, startTime + dur * 0.3);
+            osc.frequency.linearRampToValueAtTime(freq * 0.78, startTime + dur);
+          } else if (modPattern === 'meow') {
+            osc.frequency.linearRampToValueAtTime(freq * 1.28, startTime + dur * 0.35);
+            osc.frequency.exponentialRampToValueAtTime(freq * 0.72, startTime + dur);
+          } else if (modPattern === 'drop') {
+            osc.frequency.exponentialRampToValueAtTime(freq * 1.85, startTime + dur);
+          } else if (modPattern === 'jump') {
+            osc.frequency.exponentialRampToValueAtTime(freq * 2.4, startTime + dur);
+          } else if (modPattern === 'laser') {
+            osc.frequency.exponentialRampToValueAtTime(freq * 0.22, startTime + dur);
+          } else if (modPattern === 'trumpet_call') {
+            osc.frequency.exponentialRampToValueAtTime(freq * 1.65, startTime + dur * 0.4);
+            osc.frequency.linearRampToValueAtTime(freq * 1.45, startTime + dur);
+          } else if (modPattern === 'spring') {
+            for (let k = 0; k < 5; k++) {
+              osc.frequency.linearRampToValueAtTime(freq * (1 + k * 0.18 + (k % 2 === 0 ? 0.25 : -0.1)), startTime + (dur / 5) * (k + 1));
+            }
+          } else if (modPattern === 'ufo') {
+            for (let k = 0; k < 6; k++) {
+              osc.frequency.linearRampToValueAtTime(freq * (k % 2 === 0 ? 1.3 : 0.78), startTime + (dur / 6) * (k + 1));
+            }
+          } else if (modPattern === 'wind') {
+            osc.frequency.linearRampToValueAtTime(freq * 1.22, startTime + dur * 0.5);
+            osc.frequency.linearRampToValueAtTime(freq * 0.88, startTime + dur);
+          }
+
+          gain.gain.setValueAtTime(0.001, startTime);
+          gain.gain.linearRampToValueAtTime(0.22, startTime + 0.015);
+          gain.gain.exponentialRampToValueAtTime(0.001, startTime + dur);
+
+          if (soundObj.filter) {
+            const filter = ctx.createBiquadFilter();
+            filter.type = 'lowpass';
+            filter.frequency.setValueAtTime(soundObj.filter, startTime);
+            osc.connect(filter);
+            filter.connect(gain);
+          } else {
+            osc.connect(gain);
+          }
+
+          gain.connect(outputNode);
+          osc.start(startTime);
+          osc.stop(startTime + dur + 0.02);
+
+          // 倍音レイヤー（豊かな響き）
+          if (soundObj.harm) {
+            const hOsc = ctx.createOscillator();
+            const hGain = ctx.createGain();
+            hOsc.type = 'sine';
+            hOsc.frequency.setValueAtTime(freq * soundObj.harm, startTime);
+            hGain.gain.setValueAtTime(0.001, startTime);
+            hGain.gain.linearRampToValueAtTime(0.09, startTime + 0.01);
+            hGain.gain.exponentialRampToValueAtTime(0.001, startTime + dur * 0.75);
+            hOsc.connect(hGain);
+            hGain.connect(outputNode);
+            hOsc.start(startTime);
+            hOsc.stop(startTime + dur * 0.8);
+          }
+        };
+
+        const pat = soundObj.pattern;
+        if (pat === 'dingdong') {
+          triggerTone(now, baseFreq, 0.25, 'sine');
+          triggerTone(now + 0.22, baseFreq * 0.7937, 0.36, 'sine');
+        } else if (pat === 'siren') {
+          triggerTone(now, baseFreq, 0.24, 'sine');
+          triggerTone(now + 0.23, baseFreq * 0.7937, 0.28, 'sine');
+        } else if (pat === 'coin') {
+          triggerTone(now, baseFreq, 0.11, 'square');
+          triggerTone(now + 0.1, baseFreq * 1.3348, 0.28, 'square');
+        } else if (pat === 'bark') {
+          triggerTone(now, baseFreq, 0.11, 'sawtooth', 'chirp');
+          triggerTone(now + 0.14, baseFreq * 1.12, 0.13, 'sawtooth', 'chirp');
+        } else if (pat === 'uguisu') {
+          triggerTone(now, baseFreq * 0.8, 0.22, 'sine');
+          triggerTone(now + 0.23, baseFreq, 0.09, 'sine');
+          triggerTone(now + 0.33, baseFreq * 1.25, 0.14, 'sine', 'chirp');
+        } else if (pat === 'echo') {
+          triggerTone(now, baseFreq, 0.20, 'sine');
+          triggerTone(now + 0.22, baseFreq * 0.98, 0.26, 'sine');
+        } else if (pat === 'chord_maj') {
+          [1, 1.2599, 1.4983].forEach((m) => triggerTone(now, baseFreq * m, 0.48, 'sine'));
+        } else if (pat === 'chord_min') {
+          [1, 1.1892, 1.4983].forEach((m) => triggerTone(now, baseFreq * m, 0.48, 'sine'));
+        } else if (pat === 'powerup') {
+          [1, 1.25, 1.5, 1.875, 2.0].forEach((m, idx) => {
+            triggerTone(now + idx * 0.065, baseFreq * m, 0.18, 'triangle');
+          });
+        } else if (pat === 'double' || extraDouble) {
+          triggerTone(now, baseFreq, 0.18, soundObj.wave);
+          triggerTone(now + 0.2, baseFreq, 0.22, soundObj.wave);
+        } else if (pat === 'trill') {
+          for (let i = 0; i < 4; i++) {
+            triggerTone(now + i * 0.085, baseFreq * (i % 2 === 0 ? 1 : 1.08), 0.075, soundObj.wave);
+          }
+        } else if (pat === 'arpeggio') {
+          [1, 1.25, 1.5, 2].forEach((m, idx) => {
+            triggerTone(now + idx * 0.08, baseFreq * m, 0.26, soundObj.wave);
+          });
+        } else if (pat === 'hoot') {
+          triggerTone(now, baseFreq, 0.16, 'sine');
+          triggerTone(now + 0.2, baseFreq * 0.94, 0.30, 'sine');
+        } else if (pat === 'robot') {
+          [1, 1.4, 0.8, 1.6].forEach((m, idx) => {
+            triggerTone(now + idx * 0.075, baseFreq * m, 0.07, 'sawtooth');
+          });
+        } else if (pat === 'bubble') {
+          [1, 1.3, 1.65].forEach((m, idx) => {
+            triggerTone(now + idx * 0.09, baseFreq * m, 0.14, 'sine', 'drop');
+          });
+        } else {
+          triggerTone(now, baseFreq, soundObj.decay || 0.4, soundObj.wave, pat);
+        }
+      }
+
+      playClickFeedback(freq = 640) {
+        const ctx = this.ensureCtx();
+        if (!ctx) return;
+        const now = ctx.currentTime;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, now);
+        osc.frequency.exponentialRampToValueAtTime(freq * 1.35, now + 0.05);
+        gain.gain.setValueAtTime(0.001, now);
+        gain.gain.linearRampToValueAtTime(0.14, now + 0.008);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.065);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.07);
+      }
+
+      playTactileBump(typeIdx = 0) {
+        const ctx = this.ensureCtx();
+        if (!ctx) return;
+        const now = ctx.currentTime;
+        const freqs = [380, 480, 580, 700, 820];
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freqs[typeIdx % freqs.length], now);
+        osc.frequency.exponentialRampToValueAtTime(160, now + 0.028);
+        gain.gain.setValueAtTime(0.001, now);
+        gain.gain.linearRampToValueAtTime(0.11, now + 0.004);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.032);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.036);
+      }
+
+      playCorrectFanfare() {
+        const ctx = this.ensureCtx();
+        if (!ctx) return;
+        const now = ctx.currentTime;
+        // ピンポーン＋ファンファーレ
+        const seq = [
+          { f: 659.25, t: 0.00, d: 0.18 },
+          { f: 523.25, t: 0.14, d: 0.24 },
+          { f: 783.99, t: 0.34, d: 0.16 },
+          { f: 1046.5, t: 0.48, d: 0.55 }
+        ];
+        seq.forEach((n) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(n.f, now + n.t);
+          gain.gain.setValueAtTime(0.001, now + n.t);
+          gain.gain.linearRampToValueAtTime(0.22, now + n.t + 0.015);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + n.t + n.d);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(now + n.t);
+          osc.stop(now + n.t + n.d + 0.02);
+        });
+      }
+
+      playWrongBuzz() {
+        const ctx = this.ensureCtx();
+        if (!ctx) return;
+        const now = ctx.currentTime;
+        // 子供にも優しい温かみのある「ブッブー」音
+        [0, 0.17].forEach((offset) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(165, now + offset);
+          osc.frequency.linearRampToValueAtTime(135, now + offset + 0.13);
+          const filter = ctx.createBiquadFilter();
+          filter.type = 'lowpass';
+          filter.frequency.setValueAtTime(520, now + offset);
+          gain.gain.setValueAtTime(0.001, now + offset);
+          gain.gain.linearRampToValueAtTime(0.18, now + offset + 0.012);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + offset + 0.14);
+          osc.connect(filter);
+          filter.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(now + offset);
+          osc.stop(now + offset + 0.15);
+        });
+      }
+    }
+
+    /**
+     * サウンド間違い探し 3Dデジタルモデル（Three.js）
+     * - 手書きスケッチ構造：左右3×3格子ボタン（各9個）＋ 中央縦長ブリッジ＆楕円（オーバル）コアボタン
+     * - 視覚障がい者・子供向け触覚デザイン：格子仕切り凸リブ、中心5番ホーム突起、識別ドット、手前3段階難易度凸バー
+     */
+    class SoundSpotDifference3D {
+      constructor() {
+        this.canvas = document.getElementById('threeCanvas');
+        this.stage = document.getElementById('canvasStage');
+        this.audio = new SoundDifferenceAudioEngine();
+
+        // ゲーム状態
+        this.difficulty = 1; // 1: かんたん, 2: ふつう, 3: むずかしい
+        this.selectedBank = 'all';
+        this.oddIndex = 4; // 0..8 のうち1ヶ所だけ違う音が鳴る位置
+        this.oddSide = 'R'; // 'L' または 'R' の片側1マスだけ相違音
+        this.cellBaseSounds = []; // 9マスそれぞれに割り当てられた9種類の基準音 [0..8]
+        this.oddSound = null; // 10個目の音（相違マスの反対側で鳴る音）
+        this.diffPitchMult = 1.0;
+        this.diffExtraDouble = false;
+        this.diffDescription = '';
+        this.previewTimerIds = [];
+
+        this.isSolved = false;
+        this.elapsedSec = 0;
+        this.solvedCount = 0;
+        this.streakCount = 0;
+
+        // 同時押し・試聴管理
+        this.lastSinglePress = null; // { side: 'L'|'R', idx: 0..8, time: ms }
+        this.selectedPairIdx = 4;
+        this.pressedKeys = new Set();
+
+        // 表示モード＆分解展開
+        this.viewMode = 'DEMO'; // 'DEMO' | 'MECH'
+        this.explodeAmount = 0;
+        this.tactileProbeMode = false;
+        this.lastBumpTime = 0;
+
+        // 3Dメッシュ参照
+        this.interactiveMeshes = [];
+        this.tactileMeshes = [];
+        this.leftBtnGroups = [];
+        this.rightBtnGroups = [];
+        this.leftBtnCaps = [];
+        this.rightBtnCaps = [];
+        this.diffBtnMeshes = [];
+        this.soundWaves = [];
+        this.signalPulses = []; // 配線を通って中央コアへ伝わる光パルス
+        this.cableCurves = { L: [], R: [] };
+
+        // 分解アニメーション対象グループ
+        this.bottomBaseGroup = null;
+        this.pcbLayerGroup = null;
+        this.coreSpeakerGroup = null;
+        this.topShellGroup = null;
+        this.gridRibsGroup = null;
+        this.buttonsLayerGroup = null;
+
+        // 透過・ハイライト制御用マテリアル群
+        this.shellMaterials = [];
+        this.buttonCapMaterials = [];
+        this.ribMaterial = null;
+        this.partHighlightGroups = {
+          tactile: [],
+          core: [],
+          matrix: []
+        };
+        this.focusedPart = null;
+
+        this.POS_NAMES = [
+          '左上（1番）', '上真ん中（2番）', '右上（3番）',
+          '左真ん中（4番）', 'ど真ん中・ホーム（5番）', '右真ん中（6番）',
+          '左下（7番）', '下真ん中（8番）', '右下（9番）'
+        ];
+
+        this.initThree();
+        this.buildHardwareModel();
+        this.buildMiniGridUI();
+        this.startNewRound(false);
+        this.bindEvents();
+        this.handleResize();
+
+        this.lastFrameTs = performance.now();
+        requestAnimationFrame((ts) => this.animate(ts));
+      }
+
+      initThree() {
+        this.scene = new THREE.Scene();
+        this.scene.background = new THREE.Color(0x060913);
+        this.scene.fog = new THREE.FogExp2(0x060913, 0.032);
+
+        this.camera = new THREE.PerspectiveCamera(42, 1, 0.1, 100);
+        this.renderer = new THREE.WebGLRenderer({
+          canvas: this.canvas,
+          antialias: true,
+          powerPreference: 'high-performance'
+        });
+        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+        this.renderer.shadowMap.enabled = true;
+        this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        this.renderer.toneMappingExposure = 1.15;
+
+        // スタジオ照明
+        const hemi = new THREE.HemisphereLight(0xdbeafe, 0x0f172a, 0.95);
+        this.scene.add(hemi);
+
+        const dirMain = new THREE.DirectionalLight(0xffffff, 1.35);
+        dirMain.position.set(5, 11, 7);
+        dirMain.castShadow = true;
+        dirMain.shadow.mapSize.set(1024, 1024);
+        dirMain.shadow.camera.near = 1;
+        dirMain.shadow.camera.far = 30;
+        const d = 6.5;
+        dirMain.shadow.camera.left = -d;
+        dirMain.shadow.camera.right = d;
+        dirMain.shadow.camera.top = d;
+        dirMain.shadow.camera.bottom = -d;
+        this.scene.add(dirMain);
+
+        const rimBlue = new THREE.PointLight(0x38bdf8, 0.85, 22);
+        rimBlue.position.set(-6, 4, -5);
+        this.scene.add(rimBlue);
+
+        const rimAmber = new THREE.PointLight(0xfbbf24, 0.75, 22);
+        rimAmber.position.set(6, 4, -5);
+        this.scene.add(rimAmber);
+
+        // 床グリッドステージ
+        const grid = new THREE.GridHelper(22, 22, 0x1e293b, 0x0f172a);
+        grid.position.y = -0.85;
+        this.scene.add(grid);
+
+        // カメラオービット制御変数
+        this.camTarget = new THREE.Vector3(0, 0.1, 0);
+        this.camSpherical = { radius: 9.6, theta: 0.0, phi: 0.72 };
+        this.targetSpherical = { radius: 9.6, theta: 0.0, phi: 0.72 };
+        this.isOrbitDragging = false;
+        this.prevMouse = { x: 0, y: 0 };
+      }
+
+      /**
+       * 手書きスケッチに基づく「左右3×3 ＋ 中央縦長オーバルコア」3Dモデルの構築
+       * 内部機構（スピーカー・ROMチップ・18chスイッチ・プランジャー・配線）を精密造形
+       */
+      buildHardwareModel() {
+        this.rootGroup = new THREE.Group();
+        this.scene.add(this.rootGroup);
+
+        // 各分解レイヤーグループ
+        this.bottomBaseGroup = new THREE.Group();
+        this.pcbLayerGroup = new THREE.Group();
+        this.coreSpeakerGroup = new THREE.Group();
+        this.topShellGroup = new THREE.Group();
+        this.gridRibsGroup = new THREE.Group();
+        this.buttonsLayerGroup = new THREE.Group();
+
+        this.rootGroup.add(
+          this.bottomBaseGroup,
+          this.pcbLayerGroup,
+          this.coreSpeakerGroup,
+          this.topShellGroup,
+          this.gridRibsGroup,
+          this.buttonsLayerGroup
+        );
+
+        // 共通マテリアル
+        const bodyMat = new THREE.MeshStandardMaterial({
+          color: 0xe2e8f0,
+          roughness: 0.36,
+          metalness: 0.12,
+          transparent: true,
+          opacity: 1.0,
+          depthWrite: true
+        });
+        const darkTrimMat = new THREE.MeshStandardMaterial({
+          color: 0x1e293b,
+          roughness: 0.45,
+          metalness: 0.25,
+          transparent: true,
+          opacity: 1.0,
+          depthWrite: true
+        });
+        const centerBridgeMat = new THREE.MeshStandardMaterial({
+          color: 0x0f172a,
+          roughness: 0.32,
+          metalness: 0.35,
+          transparent: true,
+          opacity: 1.0,
+          depthWrite: true
+        });
+        this.shellMaterials.push(bodyMat, darkTrimMat, centerBridgeMat);
+
+        // 寸法定数（手書きスケッチの比率：左正方形3×3 ＋ 中央縦長ブリッジ ＋ 右正方形3×3）
+        const wingW = 3.35;
+        const wingD = 3.35;
+        const bridgeW = 1.36;
+        const bridgeD = 3.55;
+        const leftCenterX = -(bridgeW / 2 + wingW / 2 - 0.06);
+        const rightCenterX = bridgeW / 2 + wingW / 2 - 0.06;
+        const step = 1.02;
+
+        // -------------------------------------------------------------
+        // 1. ボトムベース筐体（底面シャーシ＆単4電池ボックス造形）
+        // -------------------------------------------------------------
+        const baseTrimMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.5, metalness: 0.25 });
+        const baseLeft = new THREE.Mesh(new THREE.BoxGeometry(wingW, 0.22, wingD), baseTrimMat);
+        baseLeft.position.set(leftCenterX, -0.34, 0);
+        baseLeft.receiveShadow = true;
+        const baseRight = new THREE.Mesh(new THREE.BoxGeometry(wingW, 0.22, wingD), baseTrimMat);
+        baseRight.position.set(rightCenterX, -0.34, 0);
+        baseRight.receiveShadow = true;
+        const baseCenter = new THREE.Mesh(new THREE.BoxGeometry(bridgeW + 0.15, 0.26, bridgeD), baseTrimMat);
+        baseCenter.position.set(0, -0.34, 0);
+        baseCenter.receiveShadow = true;
+
+        // 電源バッテリーセル（底面中央に配置）
+        const battMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, roughness: 0.3, metalness: 0.5 });
+        [-0.22, 0.22].forEach((bx) => {
+          const batt = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.14, 1.35, 18), battMat);
+          batt.rotation.x = Math.PI / 2;
+          batt.position.set(bx, -0.18, 0);
+          this.bottomBaseGroup.add(batt);
+        });
+
+        this.bottomBaseGroup.add(baseLeft, baseRight, baseCenter);
+
+        // -------------------------------------------------------------
+        // 2. 内部基板レイヤー（左右9chスイッチ基板 ＋ 立体配線ケーブル）
+        // -------------------------------------------------------------
+        const pcbMat = new THREE.MeshStandardMaterial({
+          color: 0x047857,
+          roughness: 0.4,
+          metalness: 0.3,
+          emissive: 0x064e3b,
+          emissiveIntensity: 0.25
+        });
+        const swBodyMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.3, metalness: 0.2 });
+        const goldCapMat = new THREE.MeshStandardMaterial({
+          color: 0xfbbf24,
+          roughness: 0.22,
+          metalness: 0.85,
+          emissive: 0xb45309,
+          emissiveIntensity: 0.2
+        });
+
+        [-1, 1].forEach((dir) => {
+          const sideKey = dir < 0 ? 'L' : 'R';
+          const cx = dir < 0 ? leftCenterX : rightCenterX;
+          const pcb = new THREE.Mesh(new THREE.BoxGeometry(wingW - 0.22, 0.08, wingD - 0.22), pcbMat);
+          pcb.position.set(cx, -0.08, 0);
+          this.pcbLayerGroup.add(pcb);
+          this.partHighlightGroups.matrix.push(pcb);
+
+          // 9個の独立タクタイルスイッチ素子（白色ハウジング＋金メッキ可動接点＋基板パターン線）
+          for (let r = 0; r < 3; r++) {
+            for (let c = 0; c < 3; c++) {
+              const bx = cx + (c - 1) * step;
+              const bz = (r - 1) * step;
+
+              const swBase = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.09, 0.38), swBodyMat);
+              swBase.position.set(bx, -0.01, bz);
+              const swActuator = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.13, 0.08, 16), goldCapMat);
+              swActuator.position.set(bx, 0.06, bz);
+              this.pcbLayerGroup.add(swBase, swActuator);
+              this.partHighlightGroups.matrix.push(swBase, swActuator);
+            }
+          }
+
+          // スケッチにある「左右の3×3ボタン群から中央コアへ繋がる立体信号ケーブル（3本のカラー配線）」
+          const wireColors = [0x38bdf8, 0xfbbf24, 0x34d399];
+          [-1, 0, 1].forEach((rowIdx, wIdx) => {
+            const zPos = rowIdx * 0.72;
+            const curve = new THREE.CatmullRomCurve3([
+              new THREE.Vector3(dir * 1.35, -0.02, zPos),
+              new THREE.Vector3(dir * 0.92, 0.06, zPos * 0.65),
+              new THREE.Vector3(dir * 0.45, 0.02, zPos * 0.3)
+            ]);
+            this.cableCurves[sideKey].push(curve);
+            const tubeGeo = new THREE.TubeGeometry(curve, 18, 0.032, 8, false);
+            const tubeMat = new THREE.MeshStandardMaterial({
+              color: wireColors[wIdx],
+              emissive: wireColors[wIdx],
+              emissiveIntensity: 0.45,
+              roughness: 0.25
+            });
+            const wireMesh = new THREE.Mesh(tubeGeo, tubeMat);
+            this.pcbLayerGroup.add(wireMesh);
+            this.partHighlightGroups.matrix.push(wireMesh);
+          });
+        });
+
+        // -------------------------------------------------------------
+        // 3. 中央「コア」内部ユニット（大型スピーカー×2・36音ROM・同時押し判定IC）
+        // -------------------------------------------------------------
+        const coreFrameMat = new THREE.MeshStandardMaterial({
+          color: 0xf43f5e,
+          emissive: 0x9f1239,
+          emissiveIntensity: 0.4,
+          roughness: 0.28,
+          transparent: true,
+          opacity: 0.88
+        });
+        const coreUnit = new THREE.Mesh(new THREE.BoxGeometry(bridgeW - 0.22, 0.26, bridgeD - 0.32), coreFrameMat);
+        coreUnit.position.set(0, -0.02, 0);
+        this.coreSpeakerGroup.add(coreUnit);
+        this.partHighlightGroups.core.push(coreUnit);
+
+        // 中央の「同時押し判定マイコン（MCU）＆ 大容量36音サウンドROMチップ」
+        const icMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.3, metalness: 0.6 });
+        const icPinMat = new THREE.MeshStandardMaterial({ color: 0xfbbf24, metalness: 0.9, roughness: 0.2 });
+        const mainIc = new THREE.Mesh(new THREE.BoxGeometry(0.56, 0.09, 0.62), icMat);
+        mainIc.position.set(0, 0.14, 0);
+        const icBorder = new THREE.Mesh(new THREE.BoxGeometry(0.64, 0.04, 0.70), icPinMat);
+        icBorder.position.set(0, 0.12, 0);
+        this.coreSpeakerGroup.add(mainIc, icBorder);
+        this.partHighlightGroups.core.push(mainIc, icBorder);
+
+        // 上下2基の大型スピーカーユニット（振動板コーン＋マグネットリング）
+        const spkRingMat = new THREE.MeshStandardMaterial({ color: 0x38bdf8, metalness: 0.7, roughness: 0.2 });
+        const spkConeMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.5 });
+        [-1.08, 1.08].forEach((zOff) => {
+          const spkRing = new THREE.Mesh(new THREE.CylinderGeometry(0.38, 0.38, 0.12, 24), spkRingMat);
+          spkRing.position.set(0, 0.14, zOff);
+          const spkCone = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.32, 0.13, 24), spkConeMat);
+          spkCone.position.set(0, 0.15, zOff);
+          this.coreSpeakerGroup.add(spkRing, spkCone);
+          this.partHighlightGroups.core.push(spkRing);
+        });
+
+        // -------------------------------------------------------------
+        // 4. トップシェル（左右3×3ウイング ＋ 中央縦長ブリッジ）
+        // -------------------------------------------------------------
+        const leftShell = new THREE.Mesh(new THREE.BoxGeometry(wingW, 0.26, wingD), bodyMat);
+        leftShell.position.set(leftCenterX, 0.08, 0);
+        leftShell.castShadow = true;
+        leftShell.receiveShadow = true;
+
+        const rightShell = new THREE.Mesh(new THREE.BoxGeometry(wingW, 0.26, wingD), bodyMat);
+        rightShell.position.set(rightCenterX, 0.08, 0);
+        rightShell.castShadow = true;
+        rightShell.receiveShadow = true;
+
+        // 左右識別用のカラーサイドベゼル（左＝スカイブルー、右＝アンバー）
+        const leftAccentMat = new THREE.MeshStandardMaterial({ color: 0x0ea5e9, roughness: 0.35, transparent: true, opacity: 1.0 });
+        const rightAccentMat = new THREE.MeshStandardMaterial({ color: 0xf59e0b, roughness: 0.35, transparent: true, opacity: 1.0 });
+        this.shellMaterials.push(leftAccentMat, rightAccentMat);
+
+        const leftAccent = new THREE.Mesh(new THREE.BoxGeometry(wingW + 0.08, 0.11, wingD + 0.08), leftAccentMat);
+        leftAccent.position.set(leftCenterX, -0.04, 0);
+
+        const rightAccent = new THREE.Mesh(new THREE.BoxGeometry(wingW + 0.08, 0.11, wingD + 0.08), rightAccentMat);
+        rightAccent.position.set(rightCenterX, -0.04, 0);
+
+        // 中央縦長ブリッジ筐体（手書きスケッチの真ん中の縦長枠）
+        const centerBridge = new THREE.Mesh(new THREE.BoxGeometry(bridgeW, 0.36, bridgeD), centerBridgeMat);
+        centerBridge.position.set(0, 0.12, 0);
+        centerBridge.castShadow = true;
+        centerBridge.receiveShadow = true;
+
+        this.topShellGroup.add(leftShell, rightShell, leftAccent, rightAccent, centerBridge);
+
+        // 中央ブリッジ上下端の微細スピーカー音響穴
+        const holeMat = new THREE.MeshBasicMaterial({ color: 0x020617 });
+        [-1.60, -1.48, 1.48, 1.60].forEach((hz) => {
+          [-0.24, -0.08, 0.08, 0.24].forEach((hx) => {
+            const hole = new THREE.Mesh(new THREE.CylinderGeometry(0.028, 0.028, 0.02, 12), holeMat);
+            hole.position.set(hx, 0.305, hz);
+            this.topShellGroup.add(hole);
+          });
+        });
+
+        // -------------------------------------------------------------
+        // 5. スケッチの「3×3格子仕切り線」を立体触覚ガイドリブとして造形
+        // -------------------------------------------------------------
+        this.ribMaterial = new THREE.MeshStandardMaterial({
+          color: 0x334155,
+          roughness: 0.35,
+          metalness: 0.2,
+          transparent: true,
+          opacity: 1.0
+        });
+        const gridSpan = 3.06;
+
+        [
+          { side: 'L', cx: leftCenterX, label: '左3×3格子触覚ガイド線' },
+          { side: 'R', cx: rightCenterX, label: '右3×3格子触覚ガイド線' }
+        ].forEach((wing) => {
+          for (let i = 0; i <= 3; i++) {
+            const offset = (i - 1.5) * step;
+            const vRib = new THREE.Mesh(new THREE.BoxGeometry(0.065, 0.085, gridSpan + 0.06), this.ribMaterial);
+            vRib.position.set(wing.cx + offset, 0.245, 0);
+            vRib.castShadow = true;
+            vRib.userData = { tactileName: `${wing.label}（縦仕切りリブ）`, bumpType: 0 };
+            this.gridRibsGroup.add(vRib);
+            this.tactileMeshes.push(vRib);
+            this.partHighlightGroups.tactile.push(vRib);
+
+            const hRib = new THREE.Mesh(new THREE.BoxGeometry(gridSpan + 0.06, 0.085, 0.065), this.ribMaterial);
+            hRib.position.set(wing.cx, 0.245, offset);
+            hRib.castShadow = true;
+            hRib.userData = { tactileName: `${wing.label}（横仕切りリブ）`, bumpType: 0 };
+            this.gridRibsGroup.add(hRib);
+            this.tactileMeshes.push(hRib);
+            this.partHighlightGroups.tactile.push(hRib);
+          }
+        });
+
+        // -------------------------------------------------------------
+        // 6. 左右 3×3 の丸ボタン（計18個）＋ 触覚突起 ＋ スイッチ押し軸（プランジャー）
+        // -------------------------------------------------------------
+        const bumpMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.25 });
+        const stemMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: 0.6, roughness: 0.25 });
+
+        const create3x3Buttons = (side, cx, baseColorHex) => {
+          const groups = [];
+          const caps = [];
+          for (let idx = 0; idx < 9; idx++) {
+            const r = Math.floor(idx / 3);
+            const c = idx % 3;
+            const bx = cx + (c - 1) * step;
+            const bz = (r - 1) * step;
+
+            const btnGroup = new THREE.Group();
+            btnGroup.position.set(bx, 0.27, bz);
+
+            const capMat = new THREE.MeshStandardMaterial({
+              color: baseColorHex,
+              roughness: 0.28,
+              metalness: 0.1,
+              emissive: 0x000000,
+              emissiveIntensity: 0,
+              transparent: true,
+              opacity: 1.0
+            });
+            this.buttonCapMaterials.push(capMat);
+
+            // スケッチの丸い押しボタン
+            const capMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.36, 0.39, 0.14, 32), capMat);
+            capMesh.castShadow = true;
+            capMesh.receiveShadow = true;
+            capMesh.userData = {
+              type: 'gridButton',
+              side: side,
+              idx: idx,
+              tactileName: `${side === 'L' ? '左' : '右'}の${this.POS_NAMES[idx]}`,
+              bumpType: idx === 4 ? 3 : 1
+            };
+            btnGroup.add(capMesh);
+            this.partHighlightGroups.tactile.push(capMesh);
+
+            // ボタン裏側から基板スイッチを押すプランジャー軸（分解時に機構が見える）
+            const stemMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.24, 14), stemMat);
+            stemMesh.position.y = -0.16;
+            btnGroup.add(stemMesh);
+
+            // 視覚障がい者向け触覚ガイド造形（5番ホームドーム・周囲ドット）
+            if (idx === 4) {
+              const homeDome = new THREE.Mesh(new THREE.SphereGeometry(0.085, 16, 12), bumpMat);
+              homeDome.scale.set(1, 0.65, 1);
+              homeDome.position.y = 0.072;
+              btnGroup.add(homeDome);
+            } else {
+              const dx = (c - 1) * 0.14;
+              const dz = (r - 1) * 0.14;
+              const dot = new THREE.Mesh(new THREE.SphereGeometry(0.042, 12, 10), bumpMat);
+              dot.scale.set(1, 0.6, 1);
+              dot.position.set(dx, 0.072, dz);
+              btnGroup.add(dot);
+            }
+
+            this.buttonsLayerGroup.add(btnGroup);
+            this.interactiveMeshes.push(capMesh);
+            this.tactileMeshes.push(capMesh);
+            groups.push(btnGroup);
+            caps.push(capMesh);
+          }
+          return { groups, caps };
+        };
+
+        const leftSet = create3x3Buttons('L', leftCenterX, 0x38bdf8);
+        const rightSet = create3x3Buttons('R', rightCenterX, 0xfbbf24);
+        this.leftBtnGroups = leftSet.groups;
+        this.leftBtnCaps = leftSet.caps;
+        this.rightBtnGroups = rightSet.groups;
+        this.rightBtnCaps = rightSet.caps;
+
+        // -------------------------------------------------------------
+        // 7. 真ん中に縦に並ぶ「3つの難易度ボタン」（レベル1・レベル2・レベル3）
+        // -------------------------------------------------------------
+        const diffConfigs = [
+          { diff: 1, z: -step, label: '中央上段：レベル1ボタン（かんたん・凸バー1本）', color: 0x10b981 },
+          { diff: 2, z: 0.0,   label: '中央中段：レベル2ボタン（ふつう・凸バー2本）',   color: 0x38bdf8 },
+          { diff: 3, z: step,  label: '中央下段：レベル3ボタン（むずかしい・凸バー3本）', color: 0xa855f7 }
+        ];
+
+        diffConfigs.forEach((cfg) => {
+          const dGroup = new THREE.Group();
+          dGroup.position.set(0, 0.35, cfg.z);
+          dGroup.userData = { pressOffset: 0 };
+
+          // 選択中を示す発光フレームリング
+          const ringMat = new THREE.MeshStandardMaterial({
+            color: cfg.color,
+            emissive: cfg.color,
+            emissiveIntensity: cfg.diff === 1 ? 0.65 : 0.05,
+            roughness: 0.28
+          });
+          const frameMesh = new THREE.Mesh(new THREE.BoxGeometry(0.96, 0.06, 0.86), ringMat);
+          frameMesh.position.y = -0.03;
+          dGroup.add(frameMesh);
+
+          // 難易度ボタン本体キャップ
+          const dMat = new THREE.MeshStandardMaterial({
+            color: cfg.color,
+            roughness: 0.26,
+            metalness: 0.12,
+            emissive: cfg.color,
+            emissiveIntensity: cfg.diff === 1 ? 0.45 : 0.08,
+            transparent: true,
+            opacity: 1.0
+          });
+          this.buttonCapMaterials.push(dMat);
+
+          const dBtn = new THREE.Mesh(new THREE.BoxGeometry(0.84, 0.16, 0.74), dMat);
+          dBtn.position.y = 0.04;
+          dBtn.castShadow = true;
+          dBtn.receiveShadow = true;
+          dBtn.userData = {
+            type: 'diffButton',
+            diff: cfg.diff,
+            tactileName: cfg.label,
+            bumpType: cfg.diff + 1
+          };
+          dGroup.add(dBtn);
+          this.partHighlightGroups.core.push(dBtn);
+
+          // 内部スイッチへ繋がるアクチュエータ軸（分解時に構造が見える）
+          const dStem = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.24, 14), stemMat);
+          dStem.position.y = -0.15;
+          dGroup.add(dStem);
+
+          // 視覚障がいのある方・子供が指先でレベルを識別できる凸バー（1本・2本・3本）
+          for (let b = 0; b < cfg.diff; b++) {
+            const barOffset = (b - (cfg.diff - 1) / 2) * 0.18;
+            const ridge = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.048, 0.065), bumpMat);
+            ridge.position.set(0, 0.142, barOffset);
+            dGroup.add(ridge);
+          }
+
+          this.buttonsLayerGroup.add(dGroup);
+          this.interactiveMeshes.push(dBtn);
+          this.tactileMeshes.push(dBtn);
+          this.diffBtnMeshes.push({
+            diff: cfg.diff,
+            mesh: dBtn,
+            ringMat: ringMat,
+            group: dGroup,
+            color: cfg.color
+          });
+        });
+      }
+
+      /**
+       * 配線を通って中央コアへ飛ぶ光の信号パルスを生成
+       */
+      spawnSignalPulse(side, idx) {
+        const row = Math.floor(idx / 3);
+        const curves = this.cableCurves[side];
+        if (!curves || !curves[row]) return;
+
+        const colorHex = side === 'L' ? 0x38bdf8 : 0xfbbf24;
+        const pulseMat = new THREE.MeshBasicMaterial({ color: colorHex });
+        const pulseMesh = new THREE.Mesh(new THREE.SphereGeometry(0.075, 12, 12), pulseMat);
+        this.pcbLayerGroup.add(pulseMesh);
+
+        this.signalPulses.push({
+          mesh: pulseMesh,
+          curve: curves[row],
+          t: 0,
+          speed: 2.2
+        });
+      }
+
+      /**
+       * ミニ 3×3 操作盤UIの生成
+       */
+      buildMiniGridUI() {
+        const leftWrap = document.getElementById('miniGridLeft');
+        const rightWrap = document.getElementById('miniGridRight');
+        if (!leftWrap || !rightWrap) return;
+
+        leftWrap.innerHTML = '';
+        rightWrap.innerHTML = '';
+
+        for (let i = 0; i < 9; i++) {
+          const isCenter = i === 4;
+          const btnL = document.createElement('button');
+          btnL.type = 'button';
+          btnL.dataset.side = 'L';
+          btnL.dataset.idx = String(i);
+          btnL.className = `mini-grid-btn py-1.5 rounded-lg text-[11px] font-mono font-extrabold border transition-all ${
+            isCenter
+              ? 'bg-sky-500/25 border-sky-400 text-sky-200 ring-1 ring-sky-400/50'
+              : 'bg-slate-900 hover:bg-sky-500/20 border-slate-700 text-slate-200'
+          }`;
+          btnL.textContent = isCenter ? '●5' : String(i + 1);
+          btnL.addEventListener('click', (e) => {
+            this.handleGridPress('L', i, e.shiftKey);
+          });
+          leftWrap.appendChild(btnL);
+
+          const btnR = document.createElement('button');
+          btnR.type = 'button';
+          btnR.dataset.side = 'R';
+          btnR.dataset.idx = String(i);
+          btnR.className = `mini-grid-btn py-1.5 rounded-lg text-[11px] font-mono font-extrabold border transition-all ${
+            isCenter
+              ? 'bg-amber-500/25 border-amber-400 text-amber-200 ring-1 ring-amber-400/50'
+              : 'bg-slate-900 hover:bg-amber-500/20 border-slate-700 text-slate-200'
+          }`;
+          btnR.textContent = isCenter ? '●5' : String(i + 1);
+          btnR.addEventListener('click', (e) => {
+            this.handleGridPress('R', i, e.shiftKey);
+          });
+          rightWrap.appendChild(btnR);
+        }
+      }
+
+      /**
+       * 新しい問題を出題する（真ん中のボタンを押したときの処理）
+       * 9マスそれぞれに全て異なる9音を割り当て＋1ヶ所だけの相違音（10個目の音）を設定
+       */
+      startNewRound(announce = true) {
+        // 進行中の順番試聴タイマーがあれば停止
+        this.previewTimerIds.forEach((id) => clearTimeout(id));
+        this.previewTimerIds = [];
+
+        const pool = this.selectedBank === 'all'
+          ? [...this.audio.soundLibrary]
+          : this.audio.soundLibrary.filter((s) => s.bank === this.selectedBank);
+
+        // プールをシャッフルして重複なしの10音を抽出
+        for (let i = pool.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [pool[i], pool[j]] = [pool[j], pool[i]];
+        }
+
+        // 1〜9番の各マスに全て異なる9音（1〜9個目の音）を割り当て
+        this.cellBaseSounds = pool.slice(0, 9);
+
+        // 1ヶ所だけ違う音の位置（0..8）と左右（'L' or 'R'）を決定
+        this.oddIndex = Math.floor(Math.random() * 9);
+        this.oddSide = Math.random() < 0.5 ? 'L' : 'R';
+
+        const targetCellBase = this.cellBaseSounds[this.oddIndex];
+        // 10個目の音候補（9マスで使っていない別の音）
+        const tenthSound = pool[9] || this.audio.soundLibrary.find((s) => !this.cellBaseSounds.some((c) => c.id === s.id));
+
+        // 難易度に応じた「10個目の音（相違音）」の生成
+        this.diffPitchMult = 1.0;
+        this.diffExtraDouble = false;
+
+        if (this.difficulty === 1) {
+          // Lv.1 かんたん：9マスの音とは全く別の「10個目の音色」を設定
+          this.oddSound = tenthSound;
+          this.diffDescription = `全9音＋10個目の音「${tenthSound.name}」`;
+        } else if (this.difficulty === 2) {
+          // Lv.2 ふつう：そのマスの音色で「音程が4度高い」または「2回連続リズム」の10個目の音
+          this.oddSound = targetCellBase;
+          if (Math.random() < 0.5) {
+            this.diffPitchMult = 1.3348; // 完全4度上
+            this.diffDescription = `1ヶ所だけ高い音程（10音構成）`;
+          } else {
+            this.diffExtraDouble = true;
+            this.diffDescription = `1ヶ所だけ2回鳴るリズム（10音構成）`;
+          }
+        } else {
+          // Lv.3 むずかしい：そのマスの音色で「わずかなピッチ差（約1.068倍）」の10個目の音
+          this.oddSound = targetCellBase;
+          this.diffPitchMult = Math.random() < 0.5 ? 1.068 : 0.935;
+          this.diffDescription = `1ヶ所だけ微細な音程ズレ（10音構成）`;
+        }
+
+        this.isSolved = false;
+        this.elapsedSec = 0;
+        this.lastSinglePress = null;
+
+        // ボタン発光色をリセット
+        this.resetAllButtonHighlights();
+
+        const badge = document.getElementById('gameStatusBadge');
+        if (badge) {
+          badge.textContent = `レベル${this.difficulty} プレイ中（計10音）`;
+          badge.className = 'px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-sky-500/20 text-sky-300 border border-sky-500/40';
+        }
+        const sndLabel = document.getElementById('currentSoundName');
+        if (sndLabel) sndLabel.textContent = `9マス別音色＋相違1音（計10音）`;
+
+        if (announce) {
+          // 押された難易度ボタンの位置から光の波紋を発生させ、効果音ではなく「レベル◯スタート！」と音声出力
+          const activeItem = this.diffBtnMeshes.find((item) => item.diff === this.difficulty);
+          const wavePos = activeItem ? new THREE.Vector3(0, 0.55, activeItem.group.position.z) : new THREE.Vector3(0, 0.55, 0);
+          const waveColor = activeItem ? activeItem.color : 0x38bdf8;
+          this.spawnSoundWave(wavePos, waveColor);
+
+          this.audio.speak(`レベル${this.difficulty}スタート！`);
+        }
+      }
+
+      /**
+       * 指定マス(side: 'L'|'R', idx: 0..8)の音を鳴らす
+       * 9マスそれぞれ別々の音が割り当てられており、相違マスのみ10個目の音が鳴る
+       */
+      playCellAudio(side, idx) {
+        if (!this.cellBaseSounds || this.cellBaseSounds.length < 9) return;
+        const isOddCell = (side === this.oddSide && idx === this.oddIndex);
+        const pan = side === 'L' ? -0.65 : 0.65;
+
+        if (isOddCell) {
+          this.audio.playSampleSound(this.oddSound, pan, this.diffPitchMult, this.diffExtraDouble);
+        } else {
+          this.audio.playSampleSound(this.cellBaseSounds[idx], pan, 1.0, false);
+        }
+      }
+
+      /**
+       * 左右3×3ボタンが押されたときの統合ハンドラ
+       * - 1回押し：そのボタンの音を鳴らす
+       * - 対応する左右ボタンの同時押し（0.85秒以内の反対側対応ボタン押し / Shift+クリック / 2本指同時タッチ / キーボード同時押し）：回答判定！
+       */
+      handleGridPress(side, idx, forceSimultaneous = false) {
+        this.selectedPairIdx = idx;
+        this.highlightMiniGridSelection(idx);
+
+        const now = performance.now();
+        const isOpposingSameIdx =
+          this.lastSinglePress &&
+          this.lastSinglePress.idx === idx &&
+          this.lastSinglePress.side !== side &&
+          (now - this.lastSinglePress.time) < 850;
+
+        if (forceSimultaneous || isOpposingSameIdx) {
+          // 左右対応ボタンの「同時押し回答」として判定！
+          this.lastSinglePress = null;
+          this.evaluateSimultaneousAnswer(idx);
+          return;
+        }
+
+        // 単押し試聴：そのボタンだけを沈めて音を鳴らす
+        this.lastSinglePress = { side, idx, time: now };
+        this.pressVisualButton(side, idx, side === 'L' ? 0x38bdf8 : 0xfbbf24);
+        this.playCellAudio(side, idx);
+
+        const isOddCell = (side === this.oddSide && idx === this.oddIndex);
+        const playedSoundName = isOddCell
+          ? `${this.oddSound.name}${this.difficulty > 1 ? '（変化音）' : ''}`
+          : this.cellBaseSounds[idx].name;
+
+        const pairLabel = document.getElementById('lastPairLabel');
+        if (pairLabel) {
+          pairLabel.textContent = `試聴：${side === 'L' ? '左' : '右'}${idx + 1}番［${playedSoundName}］`;
+        }
+      }
+
+      /**
+       * 左右同時押し回答の正誤判定（合っているか間違っているか教えてくれる）
+       */
+      evaluateSimultaneousAnswer(idx) {
+        // 3Dモデル上の左右両方の対応ボタンを同時に押し込む！
+        const isCorrect = (idx === this.oddIndex);
+        const feedbackColor = isCorrect ? 0x10b981 : 0xf43f5e;
+
+        this.pressVisualButton('L', idx, feedbackColor, true);
+        this.pressVisualButton('R', idx, feedbackColor, true);
+        this.spawnSoundWave(new THREE.Vector3(0, 0.55, 0), feedbackColor);
+
+        const badge = document.getElementById('gameStatusBadge');
+        const pairLabel = document.getElementById('lastPairLabel');
+
+        if (isCorrect) {
+          // 正解！
+          if (!this.isSolved) {
+            this.isSolved = true;
+            this.solvedCount += 1;
+            this.streakCount += 1;
+            this.updateScoreUI();
+          }
+
+          if (badge) {
+            badge.textContent = `大正解！${this.POS_NAMES[idx]}が相違`;
+            badge.className = 'px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40';
+          }
+          if (pairLabel) {
+            pairLabel.textContent = `正解！${idx + 1}番ペア一致 (${this.elapsedSec.toFixed(1)}秒)`;
+          }
+
+          this.audio.playCorrectFanfare();
+          const sideText = this.oddSide === 'L' ? '左側' : '右側';
+          const baseName = this.cellBaseSounds[idx].name;
+          const oddName = this.oddSound.name;
+          const detailText = this.difficulty === 1
+            ? `「${baseName}」と「${oddName}」で違う音だったね！`
+            : `「${baseName}」の${sideText}だけ変化していたね！`;
+          this.audio.speak(
+            `ピンポーン！大正解！${this.POS_NAMES[idx]}の${sideText}が相違音！${detailText}タイムは${this.elapsedSec.toFixed(1)}秒！真ん中のレベルボタンで次の問題へ進めるよ。`
+          );
+        } else {
+          // 不正解！
+          this.streakCount = 0;
+          this.updateScoreUI();
+
+          if (badge) {
+            badge.textContent = '不正解（左右とも同じ音）';
+            badge.className = 'px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-rose-500/20 text-rose-300 border border-rose-500/40';
+          }
+          if (pairLabel) {
+            pairLabel.textContent = `不正解：${idx + 1}番ペアは左右同じ音です`;
+          }
+
+          this.audio.playWrongBuzz();
+          const sameName = this.cellBaseSounds[idx].name;
+          this.audio.speak(
+            `ブッブー、残念！${this.POS_NAMES[idx]}は左右とも同じ「${sameName}」の音だよ。ほかのマスも聴き比べてみよう！`
+          );
+        }
+      }
+
+      pressVisualButton(side, idx, glowHex, holdLonger = false) {
+        const group = side === 'L' ? this.leftBtnGroups[idx] : this.rightBtnGroups[idx];
+        const cap = side === 'L' ? this.leftBtnCaps[idx] : this.rightBtnCaps[idx];
+        if (!group || !cap) return;
+
+        group.userData.pressOffset = 0.085;
+        group.userData.holdTimer = holdLonger ? 0.75 : 0.25;
+        cap.material.emissive.setHex(glowHex);
+        cap.material.emissiveIntensity = 0.85;
+
+        // 配線上の信号パルスを中央コアへ送信
+        this.spawnSignalPulse(side, idx);
+
+        const worldPos = new THREE.Vector3();
+        group.getWorldPosition(worldPos);
+        this.spawnSoundWave(worldPos, glowHex);
+      }
+
+      resetAllButtonHighlights() {
+        [...this.leftBtnCaps, ...this.rightBtnCaps].forEach((cap) => {
+          if (cap && cap.material) {
+            cap.material.emissive.setHex(0x000000);
+            cap.material.emissiveIntensity = 0;
+          }
+        });
+      }
+
+      highlightMiniGridSelection(idx) {
+        document.querySelectorAll('.mini-grid-btn').forEach((btn) => {
+          const bIdx = Number(btn.dataset.idx);
+          if (bIdx === idx) {
+            btn.classList.add('ring-2', 'ring-white');
+          } else {
+            btn.classList.remove('ring-2', 'ring-white');
+          }
+        });
+      }
+
+      setDifficulty(diff) {
+        this.difficulty = diff;
+        const descs = {
+          1: '音色の違いがはっきり（子供・入門向け）',
+          2: '同じ音色で音程・リズムが違う（標準）',
+          3: 'わずかなピッチ差を聴き分ける（上級）'
+        };
+        const descEl = document.getElementById('diffDescLabel');
+        if (descEl) descEl.textContent = descs[diff] || '';
+
+        document.querySelectorAll('.diff-btn').forEach((btn) => {
+          const d = Number(btn.dataset.diff);
+          if (d === diff) {
+            btn.className = 'diff-btn py-2.5 px-2 rounded-xl bg-emerald-500/20 border border-emerald-400 text-emerald-200 font-extrabold text-xs transition-all text-center';
+          } else {
+            btn.className = 'diff-btn py-2.5 px-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300 font-extrabold text-xs transition-all text-center';
+          }
+        });
+
+        // 3Dモデル中央の縦3連難易度ボタンの押し込み＆発光更新
+        this.diffBtnMeshes.forEach((item) => {
+          const isSelected = item.diff === diff;
+          item.mesh.material.emissiveIntensity = isSelected ? 0.65 : 0.08;
+          if (item.ringMat) {
+            item.ringMat.emissiveIntensity = isSelected ? 0.75 : 0.05;
+          }
+          if (isSelected) {
+            item.group.userData.pressOffset = 0.095;
+          }
+        });
+
+        this.startNewRound(true);
+      }
+
+      spawnSoundWave(origin, colorHex) {
+        const ringGeo = new THREE.RingGeometry(0.18, 0.28, 32);
+        ringGeo.rotateX(-Math.PI / 2);
+        const ringMat = new THREE.MeshBasicMaterial({
+          color: colorHex,
+          transparent: true,
+          opacity: 0.85,
+          side: THREE.DoubleSide
+        });
+        const mesh = new THREE.Mesh(ringGeo, ringMat);
+        mesh.position.copy(origin);
+        mesh.position.y += 0.12;
+        this.scene.add(mesh);
+        this.soundWaves.push({ mesh, age: 0, maxAge: 0.65 });
+      }
+
+      updateScoreUI() {
+        const scoreEl = document.getElementById('scoreDisplay');
+        if (scoreEl) {
+          scoreEl.innerHTML = `${this.solvedCount}<span class="text-xs font-bold text-amber-400/70 mx-1">問</span><span class="text-xs text-emerald-300">(連続 ${this.streakCount})</span>`;
+        }
+      }
+
+      /**
+       * ① 外観・通常プレイ / ② 仕組み・内部構造モデル 切替
+       */
+      setViewMode(mode) {
+        this.viewMode = mode;
+        const btnDemo = document.getElementById('btnModeDemo');
+        const btnMech = document.getElementById('btnModeMech');
+        const slider = document.getElementById('sliderExplode');
+
+        if (mode === 'DEMO') {
+          btnDemo.className = 'px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-extrabold transition-all bg-sky-500 text-slate-950 shadow';
+          btnMech.className = 'px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-extrabold transition-all text-slate-300 hover:text-white';
+          this.focusedPart = null;
+          this.setExplodeAmount(0);
+          if (slider) slider.value = '0';
+          this.targetSpherical = { radius: 9.4, theta: 0.0, phi: 0.72 };
+        } else {
+          btnMech.className = 'px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-extrabold transition-all bg-sky-500 text-slate-950 shadow';
+          btnDemo.className = 'px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-extrabold transition-all text-slate-300 hover:text-white';
+          this.setExplodeAmount(0.65);
+          if (slider) slider.value = '0.65';
+          // 4層分解と内部配線が一望できる立体アングルへ自動移動
+          this.targetSpherical = { radius: 11.4, theta: -0.42, phi: 0.96 };
+          // デモ用信号パルスを左右から発射して仕組みを可視化
+          [1, 4, 7].forEach((i) => {
+            this.spawnSignalPulse('L', i);
+            this.spawnSignalPulse('R', i);
+          });
+          this.audio.playClickFeedback(720);
+        }
+      }
+
+      setExplodeAmount(val) {
+        this.explodeAmount = Math.max(0, Math.min(1, val));
+        const pctEl = document.getElementById('explodePctLabel');
+        if (pctEl) pctEl.textContent = `分解: ${Math.round(this.explodeAmount * 100)}%`;
+
+        // 4層が斜め視点でも重ならないワイドな上下展開ピッチ
+        const e = this.explodeAmount;
+        if (this.bottomBaseGroup) this.bottomBaseGroup.position.y = -e * 1.45;
+        if (this.pcbLayerGroup) this.pcbLayerGroup.position.y = -e * 0.35;
+        if (this.coreSpeakerGroup) this.coreSpeakerGroup.position.y = e * 0.15;
+        if (this.topShellGroup) this.topShellGroup.position.y = e * 1.15;
+        if (this.gridRibsGroup) this.gridRibsGroup.position.y = e * 1.55;
+        if (this.buttonsLayerGroup) this.buttonsLayerGroup.position.y = e * 2.25;
+
+        // 外装シェル＆ボタンキャップのクリア透過処理（仕組みモードまたは分解時に内部を透視）
+        const isTransparentView = (this.viewMode === 'MECH' || e > 0.08);
+        const shellOpacity = this.viewMode === 'MECH' ? 0.24 : (e > 0.08 ? Math.max(0.32, 1 - e * 0.65) : 1.0);
+        const capOpacity = this.viewMode === 'MECH' ? 0.55 : (e > 0.08 ? 0.75 : 1.0);
+
+        this.shellMaterials.forEach((m) => {
+          m.opacity = shellOpacity;
+          m.depthWrite = !isTransparentView;
+        });
+        if (this.ribMaterial) {
+          this.ribMaterial.opacity = this.viewMode === 'MECH' ? 0.45 : 1.0;
+        }
+        this.buttonCapMaterials.forEach((m) => {
+          m.opacity = capOpacity;
+        });
+      }
+
+      /**
+       * 右側構造カードのパーツを3D空間上で発光ハイライト
+       */
+      highlightStructurePart(partKey) {
+        this.focusedPart = partKey;
+        // いったん全グループのリセット
+        Object.keys(this.partHighlightGroups).forEach((key) => {
+          const isTarget = key === partKey;
+          this.partHighlightGroups[key].forEach((mesh) => {
+            if (mesh.material && mesh.material.emissiveIntensity !== undefined) {
+              mesh.material.emissiveIntensity = isTarget ? 0.85 : 0.1;
+            }
+          });
+        });
+
+        if (partKey === 'tactile') {
+          this.targetSpherical = { radius: 10.6, theta: -0.35, phi: 0.72 };
+        } else if (partKey === 'core') {
+          this.targetSpherical = { radius: 9.8, theta: 0.15, phi: 0.92 };
+        } else if (partKey === 'matrix') {
+          this.targetSpherical = { radius: 10.8, theta: 0.48, phi: 0.98 };
+          [0, 3, 6, 2, 5, 8].forEach((i) => {
+            this.spawnSignalPulse('L', i);
+            this.spawnSignalPulse('R', i);
+          });
+        }
+      }
+
+      setCameraPreset(preset) {
+        if (preset === 'play') {
+          this.targetSpherical = { radius: 9.4, theta: 0.0, phi: 0.72 };
+        } else if (preset === 'top') {
+          this.targetSpherical = { radius: 9.8, theta: 0.0, phi: 0.08 };
+        } else if (preset === 'side') {
+          this.targetSpherical = { radius: 8.6, theta: 1.48, phi: 1.25 };
+        } else if (preset === 'angle') {
+          this.targetSpherical = { radius: 10.2, theta: -0.58, phi: 0.78 };
+        }
+      }
+
+      bindEvents() {
+        window.addEventListener('resize', () => this.handleResize());
+
+        // 操作ガイド開閉
+        const guidePopover = document.getElementById('guidePopover');
+        document.getElementById('btnToggleGuide').addEventListener('click', () => {
+          if (guidePopover) guidePopover.classList.toggle('hidden');
+        });
+        document.getElementById('btnCloseGuide').addEventListener('click', () => {
+          if (guidePopover) guidePopover.classList.add('hidden');
+        });
+
+        // トップバーモード切替
+        document.getElementById('btnModeDemo').addEventListener('click', () => this.setViewMode('DEMO'));
+        document.getElementById('btnModeMech').addEventListener('click', () => this.setViewMode('MECH'));
+
+        // 音声ON/OFF
+        document.getElementById('btnAudioToggle').addEventListener('click', () => {
+          const on = this.audio.toggle();
+          document.getElementById('audioDot').className = `w-2 h-2 rounded-full ${on ? 'bg-emerald-400' : 'bg-slate-500'}`;
+          document.getElementById('audioLabel').textContent = on ? '音声・効果音 ON' : '音声・効果音 OFF';
+        });
+
+        // 視点プリセット
+        document.querySelectorAll('.view-btn').forEach((btn) => {
+          btn.addEventListener('click', () => this.setCameraPreset(btn.dataset.view));
+        });
+
+        // 指先なぞり触覚テストトグル
+        document.getElementById('btnTactileProbe').addEventListener('click', () => {
+          this.tactileProbeMode = !this.tactileProbeMode;
+          document.getElementById('probeLed').className = `w-2.5 h-2.5 rounded-full ${this.tactileProbeMode ? 'bg-amber-400 animate-ping' : 'bg-slate-500'}`;
+          document.getElementById('probeBtnLabel').textContent = `指先なぞり触覚テスト：${this.tactileProbeMode ? 'ON' : 'OFF'}`;
+          const box = document.getElementById('tactileReadoutBox');
+          if (box) box.classList.toggle('hidden', !this.tactileProbeMode);
+          if (this.tactileProbeMode) {
+            this.audio.speak('指先なぞり触覚テストをオンにしました。3Dモデルの上をなぞって凹凸位置を確かめてね。');
+          }
+        });
+
+        // 9マス順番試聴
+        document.getElementById('btnPreviewPair').addEventListener('click', () => {
+          if (!this.cellBaseSounds || this.cellBaseSounds.length < 9) return;
+          this.previewTimerIds.forEach((id) => clearTimeout(id));
+          this.previewTimerIds = [];
+          this.audio.speak('1番から9番まで、それぞれのマスの基準音を順番に鳴らすよ。');
+
+          for (let i = 0; i < 9; i++) {
+            const tid = setTimeout(() => {
+              this.pressVisualButton('L', i, 0x38bdf8, false);
+              this.pressVisualButton('R', i, 0xfbbf24, false);
+              this.audio.playSampleSound(this.cellBaseSounds[i], 0, 1.0, false);
+              const pairLabel = document.getElementById('lastPairLabel');
+              if (pairLabel) {
+                pairLabel.textContent = `順番試聴：${i + 1}番［${this.cellBaseSounds[i].name}］`;
+              }
+            }, i * 480);
+            this.previewTimerIds.push(tid);
+          }
+        });
+
+        // 3段階難易度ボタン
+        document.querySelectorAll('.diff-btn').forEach((btn) => {
+          btn.addEventListener('click', () => this.setDifficulty(Number(btn.dataset.diff)));
+        });
+
+        // 収録サウンドバンク選択
+        document.querySelectorAll('.bank-btn').forEach((btn) => {
+          btn.addEventListener('click', () => {
+            this.selectedBank = btn.dataset.bank;
+            document.querySelectorAll('.bank-btn').forEach((b) => {
+              if (b.dataset.bank === this.selectedBank) {
+                b.className = 'bank-btn py-1.5 px-2 rounded-lg bg-sky-500/20 border border-sky-400 text-sky-200 text-[11px] font-extrabold';
+              } else {
+                b.className = 'bank-btn py-1.5 px-2 rounded-lg bg-slate-900 border border-slate-700 text-slate-300 text-[11px] font-bold';
+              }
+            });
+            this.startNewRound(true);
+          });
+        });
+
+        // ミニグリッド中央「左右同時回答」ボタン
+        document.getElementById('btnSimulCommit').addEventListener('click', () => {
+          this.evaluateSimultaneousAnswer(this.selectedPairIdx);
+        });
+
+        // 答えを見るボタン
+        document.getElementById('btnRevealHint').addEventListener('click', () => {
+          const sideLabel = this.oddSide === 'L' ? '左側' : '右側';
+          this.pressVisualButton(this.oddSide, this.oddIndex, 0x10b981, true);
+          this.playCellAudio(this.oddSide, this.oddIndex);
+          this.audio.speak(`ヒント！${this.POS_NAMES[this.oddIndex]}の${sideLabel}が違う音だよ。左右の${this.oddIndex + 1}番を同時に押してみよう！`);
+        });
+
+        // 分解スライダー＆パーツ解説カード
+        document.getElementById('sliderExplode').addEventListener('input', (e) => {
+          this.setExplodeAmount(Number(e.target.value));
+        });
+
+        document.querySelectorAll('.part-info-btn').forEach((btn) => {
+          btn.addEventListener('click', () => {
+            if (this.explodeAmount < 0.45) {
+              this.setViewMode('MECH');
+            }
+            this.highlightStructurePart(btn.dataset.part);
+          });
+        });
+
+        // キーボード両手同時押し操作（左手: QWE/ASD/ZXC、右手: UIO/JKL/M,.、1/2/3: レベル1〜3スタート）
+        const leftKeyMap = { KeyQ: 0, KeyW: 1, KeyE: 2, KeyA: 3, KeyS: 4, KeyD: 5, KeyZ: 6, KeyX: 7, KeyC: 8 };
+        const rightKeyMap = { KeyU: 0, KeyI: 1, KeyO: 2, KeyJ: 3, KeyK: 4, KeyL: 5, KeyM: 6, Comma: 7, Period: 8 };
+
+        window.addEventListener('keydown', (e) => {
+          if (e.repeat) return;
+          if (e.code === 'Digit1') {
+            this.setDifficulty(1);
+            return;
+          } else if (e.code === 'Digit2') {
+            this.setDifficulty(2);
+            return;
+          } else if (e.code === 'Digit3') {
+            this.setDifficulty(3);
+            return;
+          }
+          this.pressedKeys.add(e.code);
+
+          if (e.code in leftKeyMap) {
+            const idx = leftKeyMap[e.code];
+            // 対応する右キーも同時に押されているかチェック
+            const matchingRight = Object.keys(rightKeyMap).find((k) => rightKeyMap[k] === idx && this.pressedKeys.has(k));
+            this.handleGridPress('L', idx, Boolean(matchingRight));
+          } else if (e.code in rightKeyMap) {
+            const idx = rightKeyMap[e.code];
+            const matchingLeft = Object.keys(leftKeyMap).find((k) => leftKeyMap[k] === idx && this.pressedKeys.has(k));
+            this.handleGridPress('R', idx, Boolean(matchingLeft));
+          }
+        });
+
+        window.addEventListener('keyup', (e) => {
+          this.pressedKeys.delete(e.code);
+        });
+
+        // 3Dキャンバス上のレイキャスト（クリック・タッチ・ホバー触覚テスト・オービット回転）
+        const raycaster = new THREE.Raycaster();
+        const pointer = new THREE.Vector2();
+
+        const getHitObject = (clientX, clientY, targetList) => {
+          const rect = this.canvas.getBoundingClientRect();
+          pointer.x = ((clientX - rect.left) / rect.width) * 2 - 1;
+          pointer.y = -((clientY - rect.top) / rect.height) * 2 + 1;
+          raycaster.setFromCamera(pointer, this.camera);
+          const hits = raycaster.intersectObjects(targetList, false);
+          return hits.length > 0 ? hits[0].object : null;
+        };
+
+        this.canvas.addEventListener('pointerdown', (e) => {
+          const guidePopover = document.getElementById('guidePopover');
+          if (guidePopover && !guidePopover.classList.contains('hidden')) {
+            guidePopover.classList.add('hidden');
+          }
+          const hit = getHitObject(e.clientX, e.clientY, this.interactiveMeshes);
+          if (hit) {
+            const data = hit.userData;
+            if (data.type === 'gridButton') {
+              this.handleGridPress(data.side, data.idx, e.shiftKey);
+            } else if (data.type === 'diffButton') {
+              this.setDifficulty(data.diff);
+            }
+            return;
+          }
+
+          // 背景ドラッグでカメラ回転
+          this.isOrbitDragging = true;
+          this.prevMouse = { x: e.clientX, y: e.clientY };
+        });
+
+        window.addEventListener('pointermove', (e) => {
+          if (this.isOrbitDragging) {
+            const dx = e.clientX - this.prevMouse.x;
+            const dy = e.clientY - this.prevMouse.y;
+            this.prevMouse = { x: e.clientX, y: e.clientY };
+            this.targetSpherical.theta -= dx * 0.008;
+            this.targetSpherical.phi = Math.max(0.08, Math.min(1.42, this.targetSpherical.phi - dy * 0.008));
+            return;
+          }
+
+          // 指先なぞり触覚テストがONのとき
+          if (this.tactileProbeMode) {
+            const hit = getHitObject(e.clientX, e.clientY, this.tactileMeshes);
+            if (hit && hit.userData && hit.userData.tactileName) {
+              const now = performance.now();
+              if (now - this.lastBumpTime > 120) {
+                this.lastBumpTime = now;
+                this.audio.playTactileBump(hit.userData.bumpType || 0);
+                const box = document.getElementById('tactileReadoutBox');
+                if (box) box.textContent = `触覚検知：${hit.userData.tactileName}`;
+              }
+            }
+          }
+        });
+
+        window.addEventListener('pointerup', () => {
+          this.isOrbitDragging = false;
+        });
+
+        // マルチタッチ対応（2本指で左右の3×3ボタンを同時にタップした場合も同時押し回答！）
+        this.canvas.addEventListener('touchstart', (e) => {
+          if (e.touches.length >= 2) {
+            const hit0 = getHitObject(e.touches[0].clientX, e.touches[0].clientY, this.interactiveMeshes);
+            const hit1 = getHitObject(e.touches[1].clientX, e.touches[1].clientY, this.interactiveMeshes);
+            if (
+              hit0 && hit1 &&
+              hit0.userData.type === 'gridButton' &&
+              hit1.userData.type === 'gridButton' &&
+              hit0.userData.side !== hit1.userData.side &&
+              hit0.userData.idx === hit1.userData.idx
+            ) {
+              e.preventDefault();
+              this.evaluateSimultaneousAnswer(hit0.userData.idx);
+            }
+          }
+        }, { passive: false });
+
+        // ホイールズーム
+        this.canvas.addEventListener('wheel', (e) => {
+          e.preventDefault();
+          this.targetSpherical.radius = Math.max(5.5, Math.min(16.0, this.targetSpherical.radius + e.deltaY * 0.005));
+        }, { passive: false });
+      }
+
+      handleResize() {
+        if (!this.stage || !this.renderer || !this.camera) return;
+        const w = this.stage.clientWidth;
+        const h = this.stage.clientHeight;
+        if (w === 0 || h === 0) return;
+        this.camera.aspect = w / h;
+        this.camera.updateProjectionMatrix();
+        this.renderer.setSize(w, h);
+      }
+
+      animate(ts) {
+        const dt = Math.min(0.05, (ts - this.lastFrameTs) / 1000);
+        this.lastFrameTs = ts;
+
+        // 経過タイマー更新
+        if (!this.isSolved) {
+          this.elapsedSec += dt;
+          const timerEl = document.getElementById('timerDisplay');
+          if (timerEl) {
+            timerEl.innerHTML = `${this.elapsedSec.toFixed(1).padStart(4, '0')}<span class="text-xs font-bold text-slate-400 ml-0.5">秒</span>`;
+          }
+        }
+
+        // カメラ補間更新
+        this.camSpherical.radius += (this.targetSpherical.radius - this.camSpherical.radius) * 0.12;
+        this.camSpherical.theta += (this.targetSpherical.theta - this.camSpherical.theta) * 0.12;
+        this.camSpherical.phi += (this.targetSpherical.phi - this.camSpherical.phi) * 0.12;
+
+        const { radius, theta, phi } = this.camSpherical;
+        this.camera.position.set(
+          this.camTarget.x + radius * Math.sin(phi) * Math.sin(theta),
+          this.camTarget.y + radius * Math.cos(phi),
+          this.camTarget.z + radius * Math.sin(phi) * Math.cos(theta)
+        );
+        this.camera.lookAt(this.camTarget);
+
+        // 左右3×3ボタンの押し込み＆発光減衰アニメーション
+        [...this.leftBtnGroups, ...this.rightBtnGroups].forEach((grp, i) => {
+          const cap = i < 9 ? this.leftBtnCaps[i] : this.rightBtnCaps[i - 9];
+          if (grp.userData.holdTimer > 0) {
+            grp.userData.holdTimer -= dt;
+          } else if (grp.userData.pressOffset > 0) {
+            grp.userData.pressOffset = Math.max(0, grp.userData.pressOffset - dt * 0.35);
+            if (cap && cap.material.emissiveIntensity > 0) {
+              cap.material.emissiveIntensity = Math.max(0, cap.material.emissiveIntensity - dt * 2.5);
+            }
+          }
+          grp.position.y = 0.27 - (grp.userData.pressOffset || 0);
+        });
+
+        // 中央縦3連難易度ボタンの押し込み復帰アニメーション
+        this.diffBtnMeshes.forEach((item) => {
+          const grp = item.group;
+          if (grp.userData.pressOffset > 0) {
+            grp.userData.pressOffset = Math.max(0, grp.userData.pressOffset - dt * 0.35);
+          }
+          const baseRestY = item.diff === this.difficulty ? 0.32 : 0.35;
+          grp.position.y = baseRestY - (grp.userData.pressOffset || 0);
+        });
+
+        // 音の波紋エフェクト更新
+        for (let i = this.soundWaves.length - 1; i >= 0; i--) {
+          const w = this.soundWaves[i];
+          w.age += dt;
+          const t = w.age / w.maxAge;
+          if (t >= 1) {
+            this.scene.remove(w.mesh);
+            w.mesh.geometry.dispose();
+            w.mesh.material.dispose();
+            this.soundWaves.splice(i, 1);
+          } else {
+            const s = 1 + t * 4.5;
+            w.mesh.scale.set(s, s, s);
+            w.mesh.material.opacity = (1 - t) * 0.85;
+          }
+        }
+
+        // 配線ケーブル上の通信光パルス更新
+        for (let i = this.signalPulses.length - 1; i >= 0; i--) {
+          const p = this.signalPulses[i];
+          p.t += dt * p.speed;
+          if (p.t >= 1) {
+            this.pcbLayerGroup.remove(p.mesh);
+            p.mesh.geometry.dispose();
+            p.mesh.material.dispose();
+            this.signalPulses.splice(i, 1);
+          } else {
+            const pt = p.curve.getPointAt(p.t);
+            p.mesh.position.copy(pt);
+          }
+        }
+
+        this.renderer.render(this.scene, this.camera);
+        requestAnimationFrame((nextTs) => this.animate(nextTs));
+      }
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      window.app = new SoundSpotDifference3D();
+    });
+  </script>
+</body>
+</html>
